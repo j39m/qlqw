@@ -40,43 +40,24 @@ int main() {
         someline = malloc(howfar * sizeof(char)); 
         fgets(someline, howfar, fp); 
 
-        /* the integer start tells us how far we must shift 
-         * everything in the char array. The goal is to trim 
-         * the extraneous leading "file:///" in the output of 
-         * "quodlibet --print-queue," and that extra cluster of 
-         * chars is 8 long. Therefore we move everything from 
-         * index 8 onwards back 8 indices. */ 
-
-        /* int start, i;
-        for(i = 0, start = 7; start+16 < howfar; i+=16, start+=16) { 
-            someline[i] = someline[start]; 
-            someline[i+1] = someline[start+1]; 
-            someline[i+2] = someline[start+2]; 
-            someline[i+3] = someline[start+3]; 
-            someline[i+4] = someline[start+4]; 
-            someline[i+5] = someline[start+5]; 
-            someline[i+6] = someline[start+6]; 
-            someline[i+7] = someline[start+7]; 
-            someline[i+8] = someline[start+8]; 
-            someline[i+9] = someline[start+9]; 
-            someline[i+10] = someline[start+10]; 
-            someline[i+11] = someline[start+11]; 
-            someline[i+12] = someline[start+12]; 
-            someline[i+13] = someline[start+13]; 
-            someline[i+14] = someline[start+14]; 
-            someline[i+15] = someline[start+15]; 
-        } */
-
+        /* The goal is to trim the extraneous leading "file:///" 
+         * in the output of "quodlibet --print-queue," and that 
+         * extra cluster of chars is 7 long. Therefore we move 
+         * everything from index 7 onwards back 7 indices. */ 
         someline = someline+7; 
-
-        // fprintf(stdout, "%s", someline); // for debugging
-
-        moar = curl_easy_unescape(someline, someline, howfar, &unsure); 
-
+        
+        /* curl_easy_unescape from libcurl processes the 
+         * fetched line and decodes percent-encoded parts (e.g.
+         * "%20" and the like). This is necessary because the 
+         * queue file stores special characters verbatim, and 
+         * not as percent-encoded characters. 
+         * ... come to think of it, I don't actually understand
+         * the exact usage of the curl_easy_unescape function 
+         * because the API is too brief... */
+        moar = curl_easy_unescape(moar, someline, howfar-13, &unsure); 
+        
         //fprintf(stdout, "%s", "Almost to free\n"); 
-
         free(someline-7); 
-
         //fprintf(stdout, "%s", "free'd\n"); 
 
         /* Buggy fix for something probably related to EOF: for
@@ -95,9 +76,9 @@ int main() {
     free(moar); 
 
     /* cleanup */
-    system ("rm -f qnew"); 
+    system ("rm -f ./qnew"); 
     if (fclose(fp) != 0){ 
-        fprintf(stderr, "%s\n", "We has issue with fclose"); 
+        fprintf(stderr, "%s\n", "wow such fclose, very problem"); 
     }  
 
     /* worthless return */
