@@ -8,7 +8,9 @@
  * things happening by the by. This idea was spawned because
  * it was a real PITA to have to stop my music and restart QL 
  * every time I wanted to write the queue out of paranoia. 
- * This program should print all your stuff to */
+ * This program should print all your stuff to stdout, which 
+ * you can then pipe to the appropriate queue file if all looks
+ * okay to you. */
 
 int main() { 
     /* FILE is a pointer to a file --- for our purposes, the file
@@ -25,7 +27,7 @@ int main() {
      * clueless way to appease it. */
     FILE *fp; 
     int howfar = 520; 
-    char someline[howfar]; 
+    char *someline; // will be of length "howfar"
     char *moar; 
     int unsure; 
 
@@ -35,6 +37,7 @@ int main() {
     fp = fopen ("qnew", "r");
     /* now read the queue contents line by line */
     while (!feof(fp)) { 
+        someline = malloc(howfar * sizeof(char)); 
         fgets(someline, howfar, fp); 
 
         /* the integer start tells us how far we must shift 
@@ -43,8 +46,8 @@ int main() {
          * "quodlibet --print-queue," and that extra cluster of 
          * chars is 8 long. Therefore we move everything from 
          * index 8 onwards back 8 indices. */ 
-        int start, i;
 
+        /* int start, i;
         for(i = 0, start = 7; start+16 < howfar; i+=16, start+=16) { 
             someline[i] = someline[start]; 
             someline[i+1] = someline[start+1]; 
@@ -62,15 +65,19 @@ int main() {
             someline[i+13] = someline[start+13]; 
             someline[i+14] = someline[start+14]; 
             someline[i+15] = someline[start+15]; 
-        }
+        } */
 
-        /* Now that we've stripped the leading "file:///" off 
-         * our crap, we can move on to decoding the percent-
-         * encoded characters in there. We steal this code from
-         * Fred Bulback, who has kindly put his stuff in the 
-         * public domain. */
-        //fprintf(stdout, "%s", someline); // for debugging
+        someline = someline+7; 
+
+        // fprintf(stdout, "%s", someline); // for debugging
+
         moar = curl_easy_unescape(someline, someline, howfar, &unsure); 
+
+        //fprintf(stdout, "%s", "Almost to free\n"); 
+
+        free(someline-7); 
+
+        //fprintf(stdout, "%s", "free'd\n"); 
 
         /* Buggy fix for something probably related to EOF: for
          * whatever reason, qlqw always puts out a trailing 
@@ -90,7 +97,7 @@ int main() {
     /* cleanup */
     system ("rm -f qnew"); 
     if (fclose(fp) != 0){ 
-        fprintf(stdout, "%s\n", "We has issue with fclose"); 
+        fprintf(stderr, "%s\n", "We has issue with fclose"); 
     }  
 
     /* worthless return */
