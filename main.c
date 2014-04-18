@@ -76,10 +76,8 @@ int main() {
     free(moar); 
 
     /* cleanup */
+    fclose(fp); 
     system ("rm -f ./qnew"); 
-    if (fclose(fp) != 0){ 
-        fprintf(stderr, "%s\n", "wow such fclose, very problem"); 
-    }  
 
     /* worthless return */
     return 13; 
