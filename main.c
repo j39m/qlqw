@@ -35,6 +35,11 @@ int main() {
     system("quodlibet --print-queue > ./qnew"); 
     /* open queue contents for reading */
     fp = fopen ("qnew", "r");
+    /* check file pointer */
+    if (!fp) { 
+        fprintf(stderr, "Oh bad very bad \n");
+        return 26; 
+    } 
     /* now read the queue contents line by line */
     while (!feof(fp)) { 
         someline = malloc(howfar * sizeof(char)); 
