@@ -20,6 +20,8 @@ int main() {
      * (explained below should be. */ 
     /* "someline" is a buffer to be used to read the contents of 
      * the QuodLibet queue line-by-line. */
+    /* "someptr" will point to the first char of "someline." It
+     * will mainly be used for pointer manipulation. */
     /* "moar" is another sort of buffer that functions like 
      * "someline" but should be the decoded version of the same */
     /* I have no idea what the int "unsure" is for, but the 
@@ -27,7 +29,8 @@ int main() {
      * clueless way to appease it. */
     FILE *fp; 
     int howfar = 520; 
-    char *someline; // will be of length "howfar"
+    char *someline[howfar]; 
+    char *someptr; //= someline; 
     char *moar; 
     int unsure; 
 
@@ -40,16 +43,17 @@ int main() {
         fprintf(stderr, "Oh bad very bad \n");
         return 26; 
     } 
+
     /* now read the queue contents line by line */
     while (!feof(fp)) { 
-        someline = malloc(howfar * sizeof(char)); 
-        fgets(someline, howfar, fp); 
+        someptr = (char *) someline; 
+        fgets(someptr, howfar, fp); 
 
         /* The goal is to trim the extraneous leading "file:///" 
          * in the output of "quodlibet --print-queue," and that 
          * extra cluster of chars is 7 long. Therefore we move 
          * everything from index 7 onwards back 7 indices. */ 
-        someline = someline+7; 
+        someptr = someptr+7; 
         
         /* curl_easy_unescape from libcurl processes the 
          * fetched line and decodes percent-encoded parts (e.g.
@@ -59,12 +63,8 @@ int main() {
          * ... come to think of it, I don't actually understand
          * the exact usage of the curl_easy_unescape function 
          * because the API is too brief... */
-        moar = curl_easy_unescape(moar, someline, howfar-13, &unsure); 
+        moar = curl_easy_unescape(moar, someptr, howfar-13, &unsure); 
         
-        //fprintf(stdout, "%s", "Almost to free\n"); 
-        free(someline-7); 
-        //fprintf(stdout, "%s", "free'd\n"); 
-
         /* Buggy fix for something probably related to EOF: for
          * whatever reason, qlqw always puts out a trailing 
          * duplicate of the ultimate line with a bit too much
