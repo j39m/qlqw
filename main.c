@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <curl/curl.h>
 
 /* The goal of this program is to pipe the output of "quodlibet 
@@ -45,36 +44,28 @@ int main() {
     } 
 
     /* now read the queue contents line by line */
-    while (!feof(fp)) { 
+    while (1) { 
         someptr = (char *) someline; 
         fgets(someptr, howfar, fp); 
+        /* fix to prevent last line from being read twice. This 
+         * is because you physically reach the end of the file 
+         * but you don't know until you try to use fgets again.
+         * At THIS point, you can break if you detect EOF. */
+        if (feof(fp)) { break; } 
 
-        /* The goal is to trim the extraneous leading "file:///" 
-         * in the output of "quodlibet --print-queue," and that 
-         * extra cluster of chars is 7 long. Therefore we move 
-         * everything from index 7 onwards back 7 indices. */ 
-        someptr = someptr+7; 
-        
         /* curl_easy_unescape from libcurl processes the 
          * fetched line and decodes percent-encoded parts (e.g.
          * "%20" and the like). This is necessary because the 
          * queue file stores special characters verbatim, and 
-         * not as percent-encoded characters. 
+         * not as percent-encoded characters. We trim off the 
+         * "file://" at the begining and go for it. 
          * ... come to think of it, I don't actually understand
          * the exact usage of the curl_easy_unescape function 
          * because the API is too brief... */
-        moar = curl_easy_unescape(moar, someptr, howfar-13, &unsure); 
+        moar = curl_easy_unescape(moar, someptr+7, howfar-13, &unsure); 
         
-        /* Buggy fix for something probably related to EOF: for
-         * whatever reason, qlqw always puts out a trailing 
-         * duplicate of the ultimate line with a bit too much
-         * hacked off the head. The following if statement takes
-         * care of it by saying, "if the / in '/home' doesn't 
-         * appear at the head, stop execution." */
-        if (moar[0] != '/') { break; } 
-
         /* At the end of it all, we print our hard-gotten line. */
-        fprintf(stdout,"%s", moar); 
+        fprintf(stdout, "%s", moar); 
     }
 
     /* something something libcurl API said so */
