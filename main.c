@@ -33,6 +33,12 @@ int main() {
     char *moar; 
     int unsure; 
 
+    /*setup: MAKE SURE there is no existing qnew in wd */
+    if (fopen("qnew", "r")) { 
+        fprintf(stdout, "Complaint: You can't have a file named \"qnew\" in this directory! Kindly move it so that qlqw can do its work.\n"); 
+        return 26; 
+    } 
+
     /* setup: print queue to file "qnew" */
     system("quodlibet --print-queue > ./qnew"); 
     /* open queue contents for reading */
