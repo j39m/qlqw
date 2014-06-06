@@ -78,8 +78,13 @@ int main() {
     free(moar); 
 
     /* cleanup */
-    fclose(fp); 
-    system ("rm -f ./qnew"); 
+    int fclose_success = fclose(fp); 
+    if (0 == fclose_success) { 
+        remove("./qnew"); 
+    } else { 
+        fprintf(stderr, "fclose failed!\n"); 
+        return 26; 
+    } 
 
     /* worthless return */
     return 13; 
