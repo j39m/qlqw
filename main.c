@@ -33,6 +33,13 @@ int main() {
     char *moar; 
     int unsure; 
 
+    /*setup: MAKE SURE quodlibet is running. Trouble otherwise. */
+    if (0 != system("pidof -x quodlibet > /dev/null")) { 
+        // if not zero, execute below expr
+        fprintf(stdout, "Complaint: QuodLibet isn't running.\n"); 
+        return 26; 
+    } 
+
     /*setup: MAKE SURE there is no existing qnew in wd */
     if (fopen("qnew", "r")) { 
         fprintf(stdout, "Complaint: You can't have a file named \"qnew\" in this directory! Kindly move it so that qlqw can do its work.\n"); 
