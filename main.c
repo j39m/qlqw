@@ -37,7 +37,14 @@ int main(int argc, char *argv[]) {
     int unsure; 
 
     /*setup: MAKE SURE quodlibet is running. Trouble otherwise. */
-    if (system("pidof -x quodlibet > /dev/null")) { 
+    char *first = "pgrep -u "; 
+    char *user = getenv ("USER"); 
+    char *second = " quodlibet > /dev/null"; 
+    char *find_process = malloc(strlen(first)+strlen(user)+strlen(second)+1); 
+    strcpy(find_process, first); 
+    strcat(find_process, user); 
+    strcat(find_process, second); 
+    if (system(find_process)) { 
         // if not zero, execute below expr
         fprintf(stdout, "Complaint: QuodLibet isn't running.\n"); 
         return 26; 
@@ -126,6 +133,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "fclose failed!\n"); 
         return 26; 
     } 
+    free(qpath); 
 
     /* worthless return */
     return 13; 
