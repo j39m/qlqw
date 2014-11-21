@@ -69,19 +69,27 @@ int main(int argc, char *argv[]) {
     } 
 
     /* now read the queue contents line by line */
-    while (1) { 
-        someptr = (char *) someline; 
-        fgets(someptr, howfar, fp); 
-        if (feof(fp)) { break; } 
+    if (!write) { 
+        while (1) { 
+            someptr = (char *) someline; 
+            fgets(someptr, howfar, fp); 
+            if (feof(fp)) { break; } 
 
-        moar = curl_easy_unescape(moar, someptr+7, howfar-13, &unsure); 
+            moar = curl_easy_unescape(moar, someptr+7, howfar-13, &unsure); 
 
-        if (!write) {           // if write flag is not set, 
             printf("%s", moar); // print, don't write. 
-        } else { 
+        }
+    } else { // write mode enabled! 
+        while (1) { 
+            someptr = (char *) someline; 
+            fgets(someptr, howfar, fp); 
+            if (feof(fp)) { break; } 
+
+            moar = curl_easy_unescape(moar, someptr+7, howfar-13, &unsure); 
+
             fwrite( moar, 1, strlen(moar), queue); 
-        } 
-    }
+        }
+    } 
 
     /* something something libcurl API said so */
     free(moar); 
