@@ -12,7 +12,8 @@ my %flags = ();
 getopts ("hn", \%flags);
 
 if (defined $flags{h}) { 
-print "Have a look at the readme! pqlqw doesn't require much explanation.\n" and exit; 
+  print "Have a look at the readme!"
+  ." pqlqw doesn't require much explanation.\n" and exit; 
 } 
 
 # look for a running instance of Quod Libet: 
