@@ -47,9 +47,10 @@ if (defined $flags{n}) {
   print $q_contents; 
 } else { 
   # now let's open the queue file for writing: 
-  open (q_file, "> $qp") or die "couldn't open $qp\n"; 
+  open (my $q_file, "> $qp") or die "couldn't open $qp\n"; 
   # AND NOW LET US WRITE: 
-  print q_file $q_contents;
+  print $q_file $q_contents;
+  close $q_file
 } 
 
 exit; 
