@@ -16,7 +16,6 @@ if (defined $flags{h}) {
   ." pqlqw doesn't require much explanation.\n" and exit; 
 } 
 
-# look for a running instance of Quod Libet: 
 my $username = $ENV{"LOGNAME"}; 
 # pgrep Quod Libet by username, surpressing output 
 my $returnzeroplz = system(join(" ", "pgrep -u", $username, 
@@ -33,9 +32,8 @@ my $q_contents = `quodlibet --print-queue | cut -c 8-650`;
 # don't forget to unescape encodings on the queue contents. 
 $q_contents = uri_unescape($q_contents); 
 
-# lovely. now we need the user's home directory
+# ready queue file for writing
 my $userhome = $ENV{"HOME"}; 
-# from which we build the Quod Libet queue path 
 my $qp = join ("/", $userhome, ".quodlibet", "queue"); 
 
 # two things can happen here: either the "-n" flag is set, meaning
@@ -47,7 +45,7 @@ if (defined $flags{n}) {
   print $q_contents; 
 } else { 
   # now let's open the queue file for writing: 
-  open (my $q_file, "> $qp") or die "couldn't open $qp\n"; 
+  open (my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
   # AND NOW LET US WRITE: 
   print $q_file $q_contents;
   close $q_file
