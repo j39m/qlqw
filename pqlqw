@@ -6,10 +6,16 @@ use Getopt::Std;
 # we need URI unescaping for Quod Libet's queue-printing style.
 use URI::Escape; 
 
+# The whole script should run in an infinite loop if the 
+# "-d" flag is set. 
+while (1) { 
+
 # what do you want? 
 my %flags = (); 
 # "-h" flag gets brief help, "-n" flag provides dry run to stdout.
-getopts ("hn", \%flags);
+# additionally, this script loops infinitely unless the "-o" 
+# ("oneshot") flag is set. 
+getopt ('', \%flags);
 
 if (defined $flags{h}) { 
   print "Have a look at the readme!"
@@ -23,7 +29,7 @@ my $returnzeroplz = system(join(" ", "pgrep -u", $username,
 # Did we find Quod Libet? 
 if ($returnzeroplz != 0) { 
   print "Quod Libet isn't running!\n"; 
-  exit 
+  exit 1; 
 } 
 
 # Okay, let's grab the queue according to Quod Libet.
@@ -122,4 +128,11 @@ unless (defined $flags{n}) {
   `mv -v $configtmp_path $config_path`;
 } 
 
-exit 0; 
+# decide if the script should loop or exit 
+if (defined $flags{o}) { 
+  exit 0; 
+} 
+
+sleep(130); 
+
+} # end infinite loop. 
