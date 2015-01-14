@@ -137,7 +137,7 @@ if (defined $flags{o}) {
 # if this is so. 
 
 while (1) { 
-  $status = `quodlibet --status | cut -d " " -f 1`; 
+  my $status = `quodlibet --status | cut -d " " -f 1`; 
   if ($status eq "playing") { 
     last; 
   } else { 
