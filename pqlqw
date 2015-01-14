@@ -133,6 +133,18 @@ if (defined $flags{o}) {
   exit 0; 
 } 
 
+# check to make sure that Quod Libet is not _paused_. Sleep a bit
+# if this is so. 
+
+while (1) { 
+  $status = `quodlibet --status | cut -d " " -f 1`; 
+  if ($status eq "playing") { 
+    last; 
+  } else { 
+    sleep (65); 
+  } 
+} 
+
 sleep(130); 
 
 } # end infinite loop. 
