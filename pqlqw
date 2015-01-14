@@ -129,7 +129,7 @@ unless (defined $flags{n}) {
 } 
 
 # decide if the script should loop or exit 
-if (defined $flags{o}) { 
+if (defined $flags{o} or defined $flags{n}) { 
   exit 0; 
 } 
 
