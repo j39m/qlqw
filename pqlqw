@@ -133,17 +133,6 @@ if (defined $flags{o} or defined $flags{n}) {
   exit 0; 
 } 
 
-# check to make sure that Quod Libet is not _paused_. Sleep a bit
-# if this is so. 
-
-while (1) { 
-  my $status = `quodlibet --status | cut -d " " -f 1`; 
-  if ($status eq "playing\n") { 
-    last; 
-  } else { 
-    sleep (65); 
-  } 
-} 
 
 sleep(130); 
 
