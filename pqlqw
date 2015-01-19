@@ -134,6 +134,6 @@ if (defined $flags{o} or defined $flags{n}) {
 } 
 
 
-sleep(130); 
+sleep(455);  
 
 } # end infinite loop. 
