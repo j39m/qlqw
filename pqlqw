@@ -90,7 +90,7 @@ close $current_fp;
 
 # Get (rough) seek position of playing song. 
 my $position = 0; 
-$position = `quodlibet --status | cut -d ' ' -f 7`;
+$position = `quodlibet --status | cut -d ' ' -f 6`;
 chomp ($position); 
 # the new seek position is in milliseconds, the product of the 
 # fractional position times the length of song, the whole quantity
@@ -134,6 +134,6 @@ if (defined $flags{o} or defined $flags{n}) {
 } 
 
 
-sleep(455);  
+sleep(520);  # median songlength in my library is ~459s
 
 } # end infinite loop. 
