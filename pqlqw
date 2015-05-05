@@ -6,134 +6,133 @@ use Getopt::Std;
 # we need URI unescaping for Quod Libet's queue-printing style.
 use URI::Escape; 
 
-# what do you want? 
 my %flags = (); 
 # "-h" flag gets brief help, "-n" flag provides dry run to stdout.
 # additionally, this script loops infinitely unless the "-o" 
 # ("oneshot") flag is set. 
 getopt ('', \%flags);
-
-# The whole script should run in an infinite loop if the 
-# "-d" flag is set. 
-while (1) { 
-
-if (defined $flags{h}) { 
-  print "Have a look at the readme!"
-  ." pqlqw doesn't require much explanation.\n" and exit; 
-} 
-
+$SIG{"USR1"} = "catch_sigusr1";
 my $username = $ENV{"LOGNAME"}; 
-# pgrep Quod Libet by username, surpressing output 
-my $returnzeroplz = system(join(" ", "pgrep -u", $username, 
-    "quodlibet > /dev/null"));
-# Did we find Quod Libet? 
-if ($returnzeroplz != 0) { 
-  print "Quod Libet isn't running!\n"; 
-  exit 1; 
-} 
-
-# Okay, let's grab the queue according to Quod Libet.
-my $q_contents = `quodlibet --print-queue | cut -c 8-650`; 
-# the cut pipe above trims off "file://" from the output.
-# don't forget to unescape encodings on the queue contents. 
-$q_contents = uri_unescape($q_contents); 
-
-# ready queue file for writing
 my $userhome = $ENV{"HOME"}; 
 my $qp = join ("/", $userhome, ".quodlibet", "queue"); 
 
-# two things can happen here: either the "-n" flag is set, meaning
-# that we are not to write, but to print to stdout what the write
-# would look like; or the "-n" flag is *not* set, meaning we go
-# ahead and write. We can check if it's set: 
+while (1) { 
 
-if (defined $flags{n}) { 
-  print $q_contents; 
-} else { 
-  # now let's open the queue file for writing: 
-  open (my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
-  # AND NOW LET US WRITE: 
-  print $q_file $q_contents;
-  close $q_file; 
-} 
-
-
-
-# NOW WRITE THE CONFIG FILE TO REFLECT the current song and the 
-# play position of said current song. 
-
-# Open the "currently" playing song file. 
-my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
-open my $current_fp, "<", $current_path
-  or die "Couldn't open \"$current_path!\"\n"; 
-
-# we now need extract the labels "~#length" and "~filename." 
-# If either of these appear, split on the delimiter "=" and 
-# grab the right-hand value. 
-my $songlength = 0; 
-my $current_name = ""; 
-
-foreach my $line (<$current_fp>) { 
-  if ($line =~ m/^~#length=(.*)/) { 
-    $songlength = $1; 
-  } elsif ($line =~ m/^~filename=(.*)/) { 
-    $current_name = $1; 
+  if (defined $flags{h}) { 
+    print "Have a look at the readme!"
+    ." pqlqw doesn't require much explanation.\n" and exit; 
   } 
-} 
 
-if ($current_name eq "") { 
-  print STDERR "Couldn't get currently playing song!\n"; 
-  exit 1; 
-} 
+  pqlqw_write_queue(); 
+  pqlqw_write_current(); 
 
-close $current_fp; 
-
-# Get (rough) seek position of playing song. 
-my $position = 0; 
-$position = `quodlibet --status | cut -d ' ' -f 6`;
-chomp ($position); 
-# the new seek position is in milliseconds, the product of the 
-# fractional position times the length of song, the whole quantity
-# expressed in an integer number of milliseconds.
-my $new_seek_pos = int ($position * $songlength * 1000); 
-
-if (defined $flags{n}) { 
-  print "\n". "Now playing \"$current_name\" at $new_seek_pos"
-    ." milliseconds.\n\n"; 
-} 
-
-# Open the config file and make a new one. 
-my $config_path = join ("/", $userhome, ".quodlibet", "config"); 
-open my $config_fp, "<", $config_path
-  or die "Couldn't open \"$config_path!\"\n"; 
-my $configtmp_path = join ("/", $userhome, ".quodlibet", "config-modified"); 
-open my $configtmp_fp, ">", $configtmp_path; 
-
-# write the new config file. 
-foreach my $line (<$config_fp>) { 
-  if ($line =~ m/^song /) { 
-    print $configtmp_fp "song = $current_name\n"; 
-  } elsif ($line =~ m/^seek /) { 
-    print $configtmp_fp "seek = $new_seek_pos\n"; 
-  } else { 
-    print $configtmp_fp $line; 
+  if (defined $flags{o} or defined $flags{n}) { 
+    exit 0; 
   } 
-} 
-
-close $config_fp; 
-close $configtmp_fp; 
-
-# clobber the old config file. 
-unless (defined $flags{n}) { 
-  `mv -v $configtmp_path $config_path`;
-} 
-
-# decide if the script should loop or exit 
-if (defined $flags{o} or defined $flags{n}) { 
-  exit 0; 
-} 
-
 
 sleep(520);  # median songlength in my library is ~459s
 
-} # end infinite loop. 
+} # end infinite loop. Script's main scope ends here. 
+
+
+# queue-writing subroutine. 
+sub pqlqw_write_queue { 
+
+  my $returnzeroplz = system(join(" ", "pgrep -u", $username, 
+      "quodlibet > /dev/null"));
+  if ($returnzeroplz != 0) { 
+    print "Quod Libet isn't running!\n"; 
+    exit 1; 
+  } 
+
+  my $q_contents = `quodlibet --print-queue | cut -c 8-650`; 
+  # the cut pipe above trims off "file://" from the output.
+  $q_contents = uri_unescape($q_contents); 
+
+  if (defined $flags{n}) { 
+    print $q_contents; 
+  } else { 
+    open (my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
+    print $q_file $q_contents;
+    close $q_file; 
+  } 
+
+} 
+
+
+# commits current information to config file. 
+sub pqlqw_write_current { 
+
+  my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
+  open my $current_fp, "<", $current_path
+    or die "Couldn't open \"$current_path!\"\n"; 
+
+  # we now need extract the labels "~#length" and "~filename." 
+  # If either of these appear, split on the delimiter "=" and 
+  # grab the right-hand value. 
+  my $songlength = 0; 
+  my $current_name = ""; 
+
+  foreach my $line (<$current_fp>) { 
+    if ($line =~ m/^~#length=(.*)/) { 
+      $songlength = $1; 
+    } elsif ($line =~ m/^~filename=(.*)/) { 
+      $current_name = $1; 
+    } 
+  } 
+
+  if ($current_name eq "") { 
+    print STDERR "Couldn't get currently playing song!\n"; 
+    exit 1; 
+  } 
+
+  close $current_fp; 
+
+  # Get (rough) seek position of playing song. 
+  my $position = 0; 
+  $position = `quodlibet --status | cut -d ' ' -f 6`;
+  chomp ($position); 
+  # the new seek position is in milliseconds, the product of the 
+  # fractional position times the length of song, the whole quantity
+  # expressed in an integer number of milliseconds.
+  my $new_seek_pos = int ($position * $songlength * 1000); 
+
+  if (defined $flags{n}) { 
+    print "\n". "Now playing \"$current_name\" at $new_seek_pos"
+      ." milliseconds.\n\n"; 
+  } 
+
+  # Open the config file and make a new one. 
+  my $config_path = join ("/", $userhome, ".quodlibet", "config"); 
+  open my $config_fp, "<", $config_path
+    or die "Couldn't open \"$config_path!\"\n"; 
+  my $configtmp_path = join ("/", $userhome, ".quodlibet", "config-modified"); 
+  open my $configtmp_fp, ">", $configtmp_path; 
+
+  # write the new config file. 
+  foreach my $line (<$config_fp>) { 
+    if ($line =~ m/^song /) { 
+      print $configtmp_fp "song = $current_name\n"; 
+    } elsif ($line =~ m/^seek /) { 
+      print $configtmp_fp "seek = $new_seek_pos\n"; 
+    } else { 
+      print $configtmp_fp $line; 
+    } 
+  } 
+
+  close $config_fp; 
+  close $configtmp_fp; 
+
+  unless (defined $flags{n}) { 
+    `mv -v $configtmp_path $config_path`;
+  } 
+
+} 
+
+
+# SIGUSR1 handler. 
+sub catch_sigusr1 { 
+  pqlqw_write_queue(); 
+  pqlqw_write_current(); 
+  print STDERR "Caught SIGUSR1.\n"; 
+} 
