@@ -35,15 +35,23 @@ sleep(520);  # median songlength in my library is ~459s
 } # end infinite loop. Script's main scope ends here. 
 
 
-# queue-writing subroutine. 
-sub pqlqw_write_queue { 
-
-  my $returnzeroplz = system(join(" ", "pgrep -u", $username, 
-      "quodlibet > /dev/null"));
-  if ($returnzeroplz != 0) { 
+# verify QL is running. this should be called before ANY 
+# system call to quodlibet, though it's STILL not 100% safe. 
+sub pqlqw_check_process { 
+  my $check_command = join(" ", "pgrep -u", $username, 
+    "quodlibet > /dev/null");
+  my $returnzeroplz = system($check_command);
+  if ($returnzeroplz) {
     print "Quod Libet isn't running!\n"; 
     exit 1; 
   } 
+} 
+
+
+# queue-writing subroutine. 
+sub pqlqw_write_queue { 
+
+  pqlqw_check_process(); 
 
   my $q_contents = `quodlibet --print-queue | cut -c 8-650`; 
   # the cut pipe above trims off "file://" from the output.
@@ -90,6 +98,7 @@ sub pqlqw_write_current {
 
   # Get (rough) seek position of playing song. 
   my $position = 0; 
+  pqlqw_check_process(); 
   $position = `quodlibet --status | cut -d ' ' -f 6`;
   chomp ($position); 
   # the new seek position is in milliseconds, the product of the 
