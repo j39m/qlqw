@@ -7,9 +7,7 @@ use Getopt::Std;
 use URI::Escape; 
 
 my %flags = (); 
-# "-h" flag gets brief help, "-n" flag provides dry run to stdout.
-# additionally, this script loops infinitely unless the "-o" 
-# ("oneshot") flag is set. 
+# -h -> help, -n -> dry run, -o -> do not run forever ("oneshot")
 getopt('', \%flags);
 
 $SIG{"USR1"} = "catch_sigusr1";
@@ -20,20 +18,20 @@ my $qp = join("/", $userhome, ".quodlibet", "queue");
 
 while (1) { # daemonize
 
-  if (defined $flags{h}) { 
-    print "Have a look at the readme!"
-    ." pqlqw doesn't require much explanation.\n";
-    exit 0;
-  } 
+    if (defined $flags{h}) { 
+        print "Have a look at the readme!"
+        ." pqlqw doesn't require much explanation.\n";
+        exit 0;
+    } 
 
-  pqlqw_write_queue(); 
-  pqlqw_write_current(); 
+    pqlqw_write_queue(); 
+    pqlqw_write_current(); 
 
-  if (defined $flags{o} or defined $flags{n}) { 
-    exit 0; 
-  } 
+    if (defined $flags{o} or defined $flags{n}) { 
+        exit 0; 
+    } 
 
-sleep(520);  # median songlength in my library is ~459s
+sleep(520);  # median song length in my library is ~459s
 
 } # end infinite loop. Script's main scope ends here. 
 
@@ -42,13 +40,13 @@ sleep(520);  # median songlength in my library is ~459s
 # verify QL is running. this should be called before ANY 
 # system call to quodlibet, though it's STILL not 100% safe. 
 sub pqlqw_check_process { 
-  my $check_command = join(" ", "pgrep -u", $username, 
-    "quodlibet > /dev/null");
-  my $returnzeroplz = system($check_command);
-  if ($returnzeroplz) {
-    print "Quod Libet isn't running!\n"; 
+    my $check_command = join(" ", "pgrep -u", $username, 
+                             "quodlibet > /dev/null");
+    my $returnzeroplz = system($check_command);
+    if ($returnzeroplz) {
+        print "Quod Libet isn't running!\n"; 
     exit 1; 
-  } 
+    } 
 } 
 
 
@@ -160,9 +158,9 @@ sub pqlqw_write_current {
 
 # SIGUSR1 handler. 
 sub catch_sigusr1 { 
-  pqlqw_write_queue(); 
-  pqlqw_write_current(); 
-  print STDERR "Caught SIGUSR1.\n"; 
+    pqlqw_write_queue(); 
+    pqlqw_write_current(); 
+    print STDERR "Caught SIGUSR1.\n"; 
 } 
 
 sub pqlqw_bail {
