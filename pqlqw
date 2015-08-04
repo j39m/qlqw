@@ -10,17 +10,20 @@ my %flags = ();
 # "-h" flag gets brief help, "-n" flag provides dry run to stdout.
 # additionally, this script loops infinitely unless the "-o" 
 # ("oneshot") flag is set. 
-getopt ('', \%flags);
+getopt('', \%flags);
+
 $SIG{"USR1"} = "catch_sigusr1";
+
 my $username = $ENV{"LOGNAME"}; 
 my $userhome = $ENV{"HOME"}; 
-my $qp = join ("/", $userhome, ".quodlibet", "queue"); 
+my $qp = join("/", $userhome, ".quodlibet", "queue"); 
 
-while (1) { 
+while (1) { # daemonize
 
   if (defined $flags{h}) { 
     print "Have a look at the readme!"
-    ." pqlqw doesn't require much explanation.\n" and exit; 
+    ." pqlqw doesn't require much explanation.\n";
+    exit 0;
   } 
 
   pqlqw_write_queue(); 
@@ -33,6 +36,7 @@ while (1) {
 sleep(520);  # median songlength in my library is ~459s
 
 } # end infinite loop. Script's main scope ends here. 
+
 
 
 # verify QL is running. this should be called before ANY 
@@ -60,7 +64,7 @@ sub pqlqw_write_queue {
   if (defined $flags{n}) { 
     print $q_contents; 
   } else { 
-    open (my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
+    open(my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
     print $q_file $q_contents;
     close $q_file; 
   } 
@@ -100,23 +104,24 @@ sub pqlqw_write_current {
   my $position = 0; 
   pqlqw_check_process(); 
   $position = `quodlibet --status | cut -d ' ' -f 6`;
-  chomp ($position); 
+  chomp($position); 
   # the new seek position is in milliseconds, the product of the 
   # fractional position times the length of song, the whole quantity
   # expressed in an integer number of milliseconds.
-  my $new_seek_pos = int ($position * $songlength * 1000); 
+  my $new_seek_pos = int($position * $songlength * 1000); 
 
   if (defined $flags{n}) { 
     print "\n". "Now playing \"$current_name\" at $new_seek_pos"
-      ." milliseconds.\n\n"; 
+      . " milliseconds.\n\n"; 
   } 
 
   # Open the config file and make a new one. 
-  my $config_path = join ("/", $userhome, ".quodlibet", "config"); 
-  open my $config_fp, "<", $config_path
+  my $config_path = join("/", $userhome, ".quodlibet", "config"); 
+  open(my $config_fp, "<", $config_path)
     or die "Couldn't open \"$config_path!\"\n"; 
-  my $configtmp_path = join ("/", $userhome, ".quodlibet", "config-modified"); 
-  open my $configtmp_fp, ">", $configtmp_path; 
+
+  my $configtmp_path = join("/", $userhome, ".quodlibet", "config-modified"); 
+  open(my $configtmp_fp, ">", $configtmp_path);
 
   # write the new config file. 
   foreach my $line (<$config_fp>) { 
