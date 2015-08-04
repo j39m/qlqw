@@ -57,15 +57,23 @@ sub pqlqw_write_queue {
 
   pqlqw_check_process(); 
 
-  my $q_contents = `quodlibet --print-queue | cut -c 8-650`; 
-  # the cut pipe above trims off "file://" from the output.
-  $q_contents = uri_unescape($q_contents); 
+  my @q_arr = split(/\n+/, `quodlibet --print-queue`);
+  my @q_trm = ();
+  for my $line (@q_arr) {
+    $line = uri_unescape($line);
+    push @q_trm, substr($line, 7);
+  }
+
+  my $q_contents = join("\n", @q_trm);
+  if (!$q_contents) {
+    pqlqw_bail();
+  }
 
   if (defined $flags{n}) { 
-    print $q_contents; 
+    print "$q_contents" . "\n"; 
   } else { 
     open(my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
-    print $q_file $q_contents;
+    print $q_file "$q_contents" . "\n";
     close $q_file; 
   } 
 
@@ -100,11 +108,17 @@ sub pqlqw_write_current {
 
   close $current_fp; 
 
-  # Get (rough) seek position of playing song. 
-  my $position = 0; 
   pqlqw_check_process(); 
-  $position = `quodlibet --status | cut -d ' ' -f 6`;
-  chomp($position); 
+
+  my @position_arr = split(/\s+/, `quodlibet --status`);
+  # the sixth item in here will be 0.0 < x < 1.0 and represents
+  # how far along the song you are.
+  my $position = $position_arr[5];
+
+  if (!defined($position) or !$position) {
+    pqlqw_bail();
+  }
+
   # the new seek position is in milliseconds, the product of the 
   # fractional position times the length of song, the whole quantity
   # expressed in an integer number of milliseconds.
@@ -150,3 +164,8 @@ sub catch_sigusr1 {
   pqlqw_write_current(); 
   print STDERR "Caught SIGUSR1.\n"; 
 } 
+
+sub pqlqw_bail {
+    print STDERR "It looks like QuodLibet died? Aborting...\n";
+    exit 1;
+}
