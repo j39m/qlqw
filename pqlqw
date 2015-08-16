@@ -81,46 +81,46 @@ sub pqlqw_write_queue {
 # commits current information to config file. 
 sub pqlqw_write_current { 
 
-  my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
-  open my $current_fp, "<", $current_path
-    or die "Couldn't open \"$current_path!\"\n"; 
+    my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
+    open my $current_fp, "<", $current_path
+      or die "Couldn't open \"$current_path!\"\n"; 
 
-  # we now need extract the labels "~#length" and "~filename." 
-  # If either of these appear, split on the delimiter "=" and 
-  # grab the right-hand value. 
-  my $songlength = 0; 
-  my $current_name = ""; 
+    # we now need extract the labels "~#length" and "~filename." 
+    # If either of these appear, split on the delimiter "=" and 
+    # grab the right-hand value. 
+    my $songlength = 0; 
+    my $current_name = ""; 
 
-  foreach my $line (<$current_fp>) { 
-    if ($line =~ m/^~#length=(.*)/) { 
-      $songlength = $1; 
-    } elsif ($line =~ m/^~filename=(.*)/) { 
-      $current_name = $1; 
+    foreach my $line (<$current_fp>) { 
+        if ($line =~ m/^~#length=(.*)/) { 
+            $songlength = $1; 
+        } elsif ($line =~ m/^~filename=(.*)/) { 
+            $current_name = $1; 
+        } 
     } 
-  } 
 
-  if ($current_name eq "") { 
-    print STDERR "Couldn't get currently playing song!\n"; 
-    exit 1; 
-  } 
+    if ($current_name eq "") { 
+        print STDERR "Couldn't get currently playing song!\n"; 
+        exit 1; 
+    } 
 
-  close $current_fp; 
+    close $current_fp; 
 
-  pqlqw_check_process(); 
+    pqlqw_check_process(); 
 
-  my @position_arr = split(/\s+/, `quodlibet --status`);
-  # the sixth item in here will be 0.0 < x < 1.0 and represents
-  # how far along the song you are.
-  my $position = $position_arr[5];
+    my @position_arr = split(/\s+/, `quodlibet --status`);
+    # the sixth item in here will be 0.0 < x < 1.0 and represents
+    # how far along the song you are.
+    my $position = $position_arr[5];
 
-  if (!defined($position) or !$position) {
-    pqlqw_bail();
-  }
+    if (!defined($position) or !$position) {
+        pqlqw_bail();
+    }
 
-  # the new seek position is in milliseconds, the product of the 
-  # fractional position times the length of song, the whole quantity
-  # expressed in an integer number of milliseconds.
-  my $new_seek_pos = int($position * $songlength * 1000); 
+    # the new seek position is in milliseconds, the product of the 
+    # fractional position times the length of song, the whole quantity
+    # expressed in an integer number of milliseconds.
+    my $new_seek_pos = int($position * $songlength * 1000); 
 
   if (defined $flags{n}) { 
     print "\n". "Now playing \"$current_name\" at $new_seek_pos"
