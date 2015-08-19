@@ -53,27 +53,27 @@ sub pqlqw_check_process {
 # queue-writing subroutine. 
 sub pqlqw_write_queue { 
 
-  pqlqw_check_process(); 
+    pqlqw_check_process(); 
 
-  my @q_arr = split(/\n+/, `quodlibet --print-queue`);
-  my @q_trm = ();
-  for my $line (@q_arr) {
-    $line = uri_unescape($line);
-    push @q_trm, substr($line, 7);
-  }
+    my @q_arr = split(/\n+/, `quodlibet --print-queue`);
+    my @q_trm = ();
+    for my $line (@q_arr) {
+        $line = uri_unescape($line);
+        push @q_trm, substr($line, 7);
+    }
 
-  my $q_contents = join("\n", @q_trm);
-  if (!$q_contents) {
-    pqlqw_bail();
-  }
+    my $q_contents = join("\n", @q_trm);
+    if (!$q_contents) {
+        pqlqw_bail();
+    }
 
-  if (defined $flags{n}) { 
-    print "$q_contents" . "\n"; 
-  } else { 
-    open(my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
-    print $q_file "$q_contents" . "\n";
-    close $q_file; 
-  } 
+    if (defined $flags{n}) { 
+        print "$q_contents" . "\n"; 
+    } else { 
+        open(my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
+        print $q_file "$q_contents" . "\n";
+        close $q_file; 
+    } 
 
 } 
 
@@ -83,7 +83,7 @@ sub pqlqw_write_current {
 
     my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
     open my $current_fp, "<", $current_path
-      or die "Couldn't open \"$current_path!\"\n"; 
+        or die "Couldn't open \"$current_path!\"\n"; 
 
     # we now need extract the labels "~#length" and "~filename." 
     # If either of these appear, split on the delimiter "=" and 
@@ -122,36 +122,36 @@ sub pqlqw_write_current {
     # expressed in an integer number of milliseconds.
     my $new_seek_pos = int($position * $songlength * 1000); 
 
-  if (defined $flags{n}) { 
-    print "\n". "Now playing \"$current_name\" at $new_seek_pos"
-      . " milliseconds.\n\n"; 
-  } 
-
-  # Open the config file and make a new one. 
-  my $config_path = join("/", $userhome, ".quodlibet", "config"); 
-  open(my $config_fp, "<", $config_path)
-    or die "Couldn't open \"$config_path!\"\n"; 
-
-  my $configtmp_path = join("/", $userhome, ".quodlibet", "config-modified"); 
-  open(my $configtmp_fp, ">", $configtmp_path);
-
-  # write the new config file. 
-  foreach my $line (<$config_fp>) { 
-    if ($line =~ m/^song /) { 
-      print $configtmp_fp "song = $current_name\n"; 
-    } elsif ($line =~ m/^seek /) { 
-      print $configtmp_fp "seek = $new_seek_pos\n"; 
-    } else { 
-      print $configtmp_fp $line; 
+    if (defined $flags{n}) { 
+        print "\n". "Now playing \"$current_name\" at $new_seek_pos"
+            . " milliseconds.\n\n"; 
     } 
-  } 
 
-  close $config_fp; 
-  close $configtmp_fp; 
+    # Open the config file and make a new one. 
+    my $config_path = join("/", $userhome, ".quodlibet", "config"); 
+    open(my $config_fp, "<", $config_path)
+        or die "Couldn't open \"$config_path!\"\n"; 
 
-  unless (defined $flags{n}) { 
-    `mv -v $configtmp_path $config_path`;
-  } 
+    my $configtmp_path = join("/", $userhome, ".quodlibet", "config-modified"); 
+    open(my $configtmp_fp, ">", $configtmp_path);
+
+    # write the new config file. 
+    foreach my $line (<$config_fp>) { 
+        if ($line =~ m/^song /) { 
+            print $configtmp_fp "song = $current_name\n"; 
+        } elsif ($line =~ m/^seek /) { 
+            print $configtmp_fp "seek = $new_seek_pos\n"; 
+        } else { 
+            print $configtmp_fp $line; 
+        } 
+    } 
+
+    close $config_fp; 
+    close $configtmp_fp; 
+
+    unless (defined $flags{n}) { 
+        `mv -v $configtmp_path $config_path`;
+    } 
 
 } 
 
