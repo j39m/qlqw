@@ -63,7 +63,7 @@ sub pqlqw_write_queue {
 
     my $q_contents = join("\n", @q_trm);
     if (!$q_contents) {
-        pqlqw_bail();
+        pqlqw_bail("Empty queue.");
     }
 
     if (defined $flags{n}) { 
@@ -174,11 +174,11 @@ sub catch_sigusr1 {
 sub pqlqw_bail {
     my ($msg) = @_;
 
-    print STDERR "It looks like QuodLibet died? ";
+    print STDERR "pqlqw: fatal error - ";
     if (defined($msg) && $msg) {
-        print STDERR "Aborting: $msg\n";
+        print STDERR "aborting: $msg\n";
     } else {
-        print STDERR "Aborting.\n";
+        print STDERR "aborting.\n";
     }
     exit 1;
 }
