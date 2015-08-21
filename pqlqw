@@ -44,8 +44,7 @@ sub pqlqw_check_process {
                              "quodlibet > /dev/null");
     my $returnzeroplz = system($check_command);
     if ($returnzeroplz) {
-        print "Quod Libet isn't running!\n"; 
-    exit 1; 
+        pqlqw_bail("Quod Libet isn't running!");
     } 
 } 
 
@@ -78,8 +77,12 @@ sub pqlqw_write_queue {
 } 
 
 
-# commits current information to config file. 
-sub pqlqw_write_current { 
+# reads information about currently playing song;
+# returns the tuple
+#       song length (int), 
+#       song name (string),
+# bailing out totally if things go wrong.
+sub pqlqw_get_current_info {
 
     my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
     open my $current_fp, "<", $current_path
@@ -98,13 +101,18 @@ sub pqlqw_write_current {
             $current_name = $1; 
         } 
     } 
-
-    if ($current_name eq "") { 
-        print STDERR "Couldn't get currently playing song!\n"; 
-        exit 1; 
+    if (!$current_name || !$songlength) {
+        pqlqw_bail("Couldn't get currently playing song!");
     } 
+    close $current_fp;
 
-    close $current_fp; 
+    return ($songlength, $current_name);
+}
+
+# commits information about currently playing song to config file.
+sub pqlqw_write_current { 
+    
+    my ($songlength, $current_name) = pqlqw_get_current_info();
 
     pqlqw_check_process(); 
 
@@ -114,7 +122,7 @@ sub pqlqw_write_current {
     my $position = $position_arr[5];
 
     if (!defined($position) or !$position) {
-        pqlqw_bail();
+        pqlqw_bail("Couldn't determine currently-playing position!");
     }
 
     # the new seek position is in milliseconds, the product of the 
@@ -164,6 +172,13 @@ sub catch_sigusr1 {
 } 
 
 sub pqlqw_bail {
-    print STDERR "It looks like QuodLibet died? Aborting...\n";
+    my ($msg) = @_;
+
+    print STDERR "It looks like QuodLibet died? ";
+    if (defined($msg) && $msg) {
+        print STDERR "Aborting: $msg\n";
+    } else {
+        print STDERR "Aborting.\n";
+    }
     exit 1;
 }
