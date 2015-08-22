@@ -7,8 +7,11 @@ use Getopt::Std;
 use URI::Escape; 
 
 my %flags = (); 
-# -h -> help, -n -> dry run, -o -> do not run forever ("oneshot")
 getopt('', \%flags);
+
+$main::help = (defined($flags{"h"}) ? 1 : 0);
+$main::dry = (defined($flags{"n"}) ? 1 : 0);
+$main::oneshot = (defined($flags{"o"}) ? 1 : 0);
 
 $SIG{"USR1"} = "catch_sigusr1";
 
@@ -18,7 +21,7 @@ my $qp = join("/", $userhome, ".quodlibet", "queue");
 
 while (1) { # daemonize
 
-    if (defined $flags{h}) { 
+    if ($main::help) { 
         print "Have a look at the readme!"
         ." pqlqw doesn't require much explanation.\n";
         exit 0;
@@ -27,7 +30,7 @@ while (1) { # daemonize
     pqlqw_write_queue(); 
     pqlqw_write_current(); 
 
-    if (defined $flags{o} or defined $flags{n}) { 
+    if ($main::oneshot or $main::dry) { 
         exit 0; 
     } 
 
@@ -66,7 +69,7 @@ sub pqlqw_write_queue {
         pqlqw_bail("Empty queue.");
     }
 
-    if (defined $flags{n}) { 
+    if ($main::dry) { 
         print "$q_contents" . "\n"; 
     } else { 
         open(my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
@@ -130,7 +133,7 @@ sub pqlqw_write_current {
     # expressed in an integer number of milliseconds.
     my $new_seek_pos = int($position * $songlength * 1000); 
 
-    if (defined $flags{n}) { 
+    if ($main::dry) { 
         print "\n". "Now playing \"$current_name\" at $new_seek_pos"
             . " milliseconds.\n\n"; 
     } 
@@ -157,7 +160,7 @@ sub pqlqw_write_current {
     close $config_fp; 
     close $configtmp_fp; 
 
-    unless (defined $flags{n}) { 
+    unless ($main::dry) { 
         `mv -v $configtmp_path $config_path`;
     } 
 
