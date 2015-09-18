@@ -15,17 +15,19 @@ $main::oneshot = (defined($flags{"o"}) ? 1 : 0);
 
 $SIG{"USR1"} = "catch_sigusr1";
 
-my $username = $ENV{"LOGNAME"}; 
-my $userhome = $ENV{"HOME"}; 
-my $qp = join("/", $userhome, ".quodlibet", "queue"); 
+my $username = $ENV{"LOGNAME"};
+my $userhome = $ENV{"HOME"};
+my $qp = join("/", $userhome, ".quodlibet", "queue");
+
+pqlqw_start_ql();
 
 while (1) { # daemonize
 
-    if ($main::help) { 
+    if ($main::help) {
         print "Have a look at the readme!"
         ." pqlqw doesn't require much explanation.\n";
         exit 0;
-    } 
+    }
 
     pqlqw_write_queue(); 
     pqlqw_write_current(); 
@@ -36,9 +38,15 @@ while (1) { # daemonize
 
 sleep(520);  # median song length in my library is ~459s
 
-} # end infinite loop. Script's main scope ends here. 
+} # end infinite loop. Script's main scope ends here.
 
 
+
+# start Quod Libet. Called at the beginning of the script for convenience.
+sub pqlqw_start_ql {
+    system("quodlibet &");
+    sleep(13); # pause; let it breathe
+}
 
 # verify QL is running. this should be called before ANY 
 # system call to quodlibet, though it's STILL not 100% safe. 
