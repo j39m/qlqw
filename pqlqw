@@ -12,6 +12,7 @@ getopt('', \%flags);
 $main::help = (defined($flags{"h"}) ? 1 : 0);
 $main::dry = (defined($flags{"n"}) ? 1 : 0);
 $main::oneshot = (defined($flags{"o"}) ? 1 : 0);
+$main::status = (defined($flags{"s"}) ? 1 : 0);
 
 $SIG{"USR1"} = "catch_sigusr1";
 
@@ -26,6 +27,11 @@ while (1) { # daemonize
     if ($main::help) {
         print "Have a look at the readme!"
         ." pqlqw doesn't require much explanation.\n";
+        exit 0;
+    }
+
+    if ($main::status) {
+        pqlqw_check_status();
         exit 0;
     }
 
@@ -44,8 +50,11 @@ sleep(520);  # median song length in my library is ~459s
 
 # start Quod Libet. Called at the beginning of the script for convenience.
 sub pqlqw_start_ql {
-    system("quodlibet &");
-    sleep(13); # pause; let it breathe
+    unless ($main::dry || $main::oneshot || $main::status) {
+        system("quodlibet &");
+        sleep(13);              # pause; let it breathe
+    }
+    return 0;
 }
 
 # verify QL is running. this should be called before ANY 
@@ -192,4 +201,42 @@ sub pqlqw_bail {
         print STDERR "aborting.\n";
     }
     exit 1;
+}
+
+# checks the current state of the player's on-disk config, including its queue
+# and "now playing" states, and prints the results to stdout.
+sub pqlqw_check_status {
+
+    my @queue_head = ();
+    my @queue_tail = ();
+    my $qcl = 8; # queue component lengths = len(head) = len(tail)
+
+    # slurp in the head and tail of the queue on disk
+    open(my $qfp, "<", $qp)
+        or die "couldn't open $qp\n";
+    while (<$qfp>) {
+        chomp($_);
+        if (scalar(@queue_head) < $qcl) {
+            push(@queue_head, $_);
+        } else {
+            push(@queue_tail, $_);
+        }
+        if (scalar(@queue_tail) > $qcl) {
+            shift(@queue_tail);
+        }
+    }
+    close($qfp);
+
+    # print the head and tail of the queue on disk
+    print("\n============= queue on disk =============\n\n");
+    for my $qentry (@queue_head) {
+        print("$qentry\n");
+    }
+    print(".............\n");
+    for my $qentry (@queue_tail) {
+        print("$qentry\n");
+    }
+
+    return 0;
+
 }
