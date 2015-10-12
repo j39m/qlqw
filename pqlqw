@@ -19,6 +19,7 @@ $SIG{"USR1"} = "catch_sigusr1";
 my $username = $ENV{"LOGNAME"};
 my $userhome = $ENV{"HOME"};
 my $qp = join("/", $userhome, ".quodlibet", "queue");
+$main::cp = join("/", $userhome, ".quodlibet", "config");
 
 pqlqw_start_ql();
 
@@ -210,6 +211,8 @@ sub pqlqw_check_status {
     my @queue_head = ();
     my @queue_tail = ();
     my $qcl = 8; # queue component lengths = len(head) = len(tail)
+    my $song = "";
+    my $seek = 0;
 
     # slurp in the head and tail of the queue on disk
     open(my $qfp, "<", $qp)
@@ -236,6 +239,24 @@ sub pqlqw_check_status {
     for my $qentry (@queue_tail) {
         print("$qentry\n");
     }
+
+    # slurp in the "song" and "seek" values from the config file on disk
+    open(my $cfp, "<", $main::cp)
+        or die "couldn't open $main::cp\n";
+    while (<$cfp>) {
+        if ($_ =~ m/^song = (.*)$/) {
+            $song = $1;
+        } elsif ($_ =~ m/^seek = (.*)$/) {
+            $seek = $1;
+        }
+    }
+    close($cfp);
+
+    # print the "song" and "seek" values from the config file on disk
+    print("\n============= song and seek on disk =============\n\n");
+    print("song: $song\n");
+    print("seek: $seek\n");
+    print("\n");
 
     return 0;
 
