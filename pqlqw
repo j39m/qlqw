@@ -51,7 +51,8 @@ sleep(520);  # median song length in my library is ~459s
 
 # start Quod Libet. Called at the beginning of the script for convenience.
 sub pqlqw_start_ql {
-    unless ($main::dry || $main::oneshot || $main::status) {
+    unless ($main::dry || $main::oneshot || $main::status ||
+            !pqlqw_check_process("nobail")) {
         system("quodlibet &");
         sleep(13);              # pause; let it breathe
     }
@@ -61,12 +62,19 @@ sub pqlqw_start_ql {
 # verify QL is running. this should be called before ANY 
 # system call to quodlibet, though it's STILL not 100% safe. 
 sub pqlqw_check_process { 
+
+    my $bail = (@_);
     my $check_command = join(" ", "pgrep -u", $username, 
                              "quodlibet > /dev/null");
+
     my $returnzeroplz = system($check_command);
     if ($returnzeroplz) {
+        if (defined($bail) && $bail) {
+            return 1;
+        }
         pqlqw_bail("Quod Libet isn't running!");
     } 
+    return 0;
 } 
 
 
