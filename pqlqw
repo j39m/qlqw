@@ -1,12 +1,12 @@
 #! /usr/bin/env perl
 
-use strict; 
-use warnings; 
-use Getopt::Std; 
+use strict;
+use warnings;
+use Getopt::Std;
 # we need URI unescaping for Quod Libet's queue-printing style.
-use URI::Escape; 
+use URI::Escape;
 
-my %flags = (); 
+my %flags = ();
 getopt('', \%flags);
 
 $main::help = (defined($flags{"h"}) ? 1 : 0);
@@ -39,14 +39,14 @@ while (1) { # daemonize
 
     if (!$main::semaphore) {
         $main::semaphore = 1;
-        pqlqw_write_queue(); 
-        pqlqw_write_current(); 
+        pqlqw_write_queue();
+        pqlqw_write_current();
         $main::semaphore = 0
     }
 
-    if ($main::oneshot or $main::dry) { 
-        exit 0; 
-    } 
+    if ($main::oneshot or $main::dry) {
+        exit 0;
+    }
 
 sleep(520);  # median song length in my library is ~459s
 
@@ -64,12 +64,12 @@ sub pqlqw_start_ql {
     return 0;
 }
 
-# verify QL is running. this should be called before ANY 
-# system call to quodlibet, though it's STILL not 100% safe. 
-sub pqlqw_check_process { 
+# verify QL is running. this should be called before ANY
+# system call to quodlibet, though it's STILL not 100% safe.
+sub pqlqw_check_process {
 
     my $bail = (@_);
-    my $check_command = join(" ", "pgrep -u", $username, 
+    my $check_command = join(" ", "pgrep -u", $username,
                              "quodlibet > /dev/null");
 
     my $returnzeroplz = system($check_command);
@@ -78,15 +78,15 @@ sub pqlqw_check_process {
             return 1;
         }
         pqlqw_bail("Quod Libet isn't running!");
-    } 
+    }
     return 0;
-} 
+}
 
 
-# queue-writing subroutine. 
-sub pqlqw_write_queue { 
+# queue-writing subroutine.
+sub pqlqw_write_queue {
 
-    pqlqw_check_process(); 
+    pqlqw_check_process();
 
     my @q_arr = split(/\n+/, `quodlibet --print-queue`);
     my @q_trm = ();
@@ -100,55 +100,55 @@ sub pqlqw_write_queue {
         pqlqw_bail("Empty queue.");
     }
 
-    if ($main::dry) { 
-        print "$q_contents" . "\n"; 
-    } else { 
-        open(my $q_file, ">", $qp) or die "couldn't open $qp\n"; 
+    if ($main::dry) {
+        print "$q_contents" . "\n";
+    } else {
+        open(my $q_file, ">", $qp) or die "couldn't open $qp\n";
         print $q_file "$q_contents" . "\n";
-        close $q_file; 
-    } 
+        close $q_file;
+    }
 
-} 
+}
 
 
 # reads information about currently playing song;
 # returns the tuple
-#       song length (int), 
+#       song length (int),
 #       song name (string),
 # bailing out totally if things go wrong.
 sub pqlqw_get_current_info {
 
-    my $current_path = join ("/", $userhome, ".quodlibet", "current"); 
+    my $current_path = join ("/", $userhome, ".quodlibet", "current");
     open my $current_fp, "<", $current_path
-        or die "Couldn't open \"$current_path!\"\n"; 
+        or die "Couldn't open \"$current_path!\"\n";
 
-    # we now need extract the labels "~#length" and "~filename." 
-    # If either of these appear, split on the delimiter "=" and 
-    # grab the right-hand value. 
-    my $songlength = 0; 
-    my $current_name = ""; 
+    # we now need extract the labels "~#length" and "~filename."
+    # If either of these appear, split on the delimiter "=" and
+    # grab the right-hand value.
+    my $songlength = 0;
+    my $current_name = "";
 
-    foreach my $line (<$current_fp>) { 
-        if ($line =~ m/^~#length=(.*)/) { 
-            $songlength = $1; 
-        } elsif ($line =~ m/^~filename=(.*)/) { 
-            $current_name = $1; 
-        } 
-    } 
+    foreach my $line (<$current_fp>) {
+        if ($line =~ m/^~#length=(.*)/) {
+            $songlength = $1;
+        } elsif ($line =~ m/^~filename=(.*)/) {
+            $current_name = $1;
+        }
+    }
     if (!$current_name || !$songlength) {
         pqlqw_bail("Couldn't get currently playing song!");
-    } 
+    }
     close $current_fp;
 
     return ($songlength, $current_name);
 }
 
 # commits information about currently playing song to config file.
-sub pqlqw_write_current { 
-    
+sub pqlqw_write_current {
+
     my ($songlength, $current_name) = pqlqw_get_current_info();
 
-    pqlqw_check_process(); 
+    pqlqw_check_process();
 
     my @position_arr = split(/\s+/, `quodlibet --status`);
     # the sixth item in here will be 0.0 < x < 1.0 and represents
@@ -159,61 +159,61 @@ sub pqlqw_write_current {
         pqlqw_bail("Couldn't determine currently-playing position!");
     }
 
-    # the new seek position is in milliseconds, the product of the 
+    # the new seek position is in milliseconds, the product of the
     # fractional position times the length of song, the whole quantity
     # expressed in an integer number of milliseconds.
-    my $new_seek_pos = int($position * $songlength * 1000); 
+    my $new_seek_pos = int($position * $songlength * 1000);
 
-    if ($main::dry) { 
+    if ($main::dry) {
         print "\n". "Now playing \"$current_name\" at $new_seek_pos"
-            . " milliseconds.\n\n"; 
-    } 
+            . " milliseconds.\n\n";
+    }
 
-    # Open the config file and make a new one. 
-    my $config_path = join("/", $userhome, ".quodlibet", "config"); 
+    # Open the config file and make a new one.
+    my $config_path = join("/", $userhome, ".quodlibet", "config");
     open(my $config_fp, "<", $config_path)
-        or die "Couldn't open \"$config_path!\"\n"; 
+        or die "Couldn't open \"$config_path!\"\n";
 
-    my $configtmp_path = join("/", $userhome, ".quodlibet", "config-modified"); 
+    my $configtmp_path = join("/", $userhome, ".quodlibet", "config-modified");
     open(my $configtmp_fp, ">", $configtmp_path);
 
-    # write the new config file. 
-    foreach my $line (<$config_fp>) { 
-        if ($line =~ m/^song /) { 
-            print $configtmp_fp "song = $current_name\n"; 
-        } elsif ($line =~ m/^seek /) { 
-            print $configtmp_fp "seek = $new_seek_pos\n"; 
-        } else { 
-            print $configtmp_fp $line; 
-        } 
-    } 
+    # write the new config file.
+    foreach my $line (<$config_fp>) {
+        if ($line =~ m/^song /) {
+            print $configtmp_fp "song = $current_name\n";
+        } elsif ($line =~ m/^seek /) {
+            print $configtmp_fp "seek = $new_seek_pos\n";
+        } else {
+            print $configtmp_fp $line;
+        }
+    }
 
-    close $config_fp; 
-    close $configtmp_fp; 
+    close $config_fp;
+    close $configtmp_fp;
 
-    unless ($main::dry) { 
+    unless ($main::dry) {
         `mv -v $configtmp_path $config_path`;
-    } 
+    }
 
-} 
+}
 
 
-# SIGUSR1 handler. 
+# SIGUSR1 handler.
 sub catch_sigusr1 {
     if (!$main::semaphore) {
         $main::semaphore = 1;
 
-        pqlqw_write_queue(); 
-        pqlqw_write_current(); 
+        pqlqw_write_queue();
+        pqlqw_write_current();
 
-        print STDERR "Caught SIGUSR1.\n"; 
+        print STDERR "Caught SIGUSR1.\n";
 
         $main::semaphore = 0;
 
         return 1;
     }
     return 1;
-} 
+}
 
 sub pqlqw_bail {
     my ($msg) = @_;
