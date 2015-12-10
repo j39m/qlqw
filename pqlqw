@@ -20,6 +20,7 @@ my $username = $ENV{"LOGNAME"};
 my $userhome = $ENV{"HOME"};
 my $qp = join("/", $userhome, ".quodlibet", "queue");
 $main::cp = join("/", $userhome, ".quodlibet", "config");
+$main::semaphore = 0;   # upped when operation is in progress
 
 pqlqw_start_ql();
 
@@ -36,8 +37,12 @@ while (1) { # daemonize
         exit 0;
     }
 
-    pqlqw_write_queue(); 
-    pqlqw_write_current(); 
+    if (!$main::semaphore) {
+        $main::semaphore = 1;
+        pqlqw_write_queue(); 
+        pqlqw_write_current(); 
+        $main::semaphore = 0
+    }
 
     if ($main::oneshot or $main::dry) { 
         exit 0; 
@@ -194,10 +199,20 @@ sub pqlqw_write_current {
 
 
 # SIGUSR1 handler. 
-sub catch_sigusr1 { 
-    pqlqw_write_queue(); 
-    pqlqw_write_current(); 
-    print STDERR "Caught SIGUSR1.\n"; 
+sub catch_sigusr1 {
+    if (!$main::semaphore) {
+        $main::semaphore = 1;
+
+        pqlqw_write_queue(); 
+        pqlqw_write_current(); 
+
+        print STDERR "Caught SIGUSR1.\n"; 
+
+        $main::semaphore = 0;
+
+        return 1;
+    }
+    return 1;
 } 
 
 sub pqlqw_bail {
