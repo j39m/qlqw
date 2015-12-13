@@ -48,7 +48,7 @@ while (1) { # daemonize
         exit 0;
     }
 
-sleep(520);  # median song length in my library is ~459s
+sleep(260);  # median song length in my library is ~459s; be paranoid
 
 } # end infinite loop. Script's main scope ends here.
 
