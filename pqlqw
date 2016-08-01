@@ -9,18 +9,19 @@ use URI::Escape;
 my %flags = ();
 getopt('', \%flags);
 
-$main::help = (defined($flags{"h"}) ? 1 : 0);
-$main::dry = (defined($flags{"n"}) ? 1 : 0);
-$main::oneshot = (defined($flags{"o"}) ? 1 : 0);
-$main::status = (defined($flags{"s"}) ? 1 : 0);
+$main::help     = (defined($flags{"h"}) ? 1 : 0);
+$main::dry      = (defined($flags{"n"}) ? 1 : 0);
+$main::oneshot  = (defined($flags{"o"}) ? 1 : 0);
+$main::status   = (defined($flags{"s"}) ? 1 : 0);
 
-$SIG{"USR1"} = "catch_sigusr1";
+$SIG{"USR1"}    = "catch_sigusr1";
 
-my $username = $ENV{"LOGNAME"};
-my $userhome = $ENV{"HOME"};
-my $qp = join("/", $userhome, ".quodlibet", "queue");
-$main::cp = join("/", $userhome, ".quodlibet", "config");
+my $username    = $ENV{"LOGNAME"};
+my $userhome    = $ENV{"HOME"};
+my $qp          = join("/", $userhome, ".quodlibet", "queue");
+$main::cp       = join("/", $userhome, ".quodlibet", "config");
 $main::semaphore = 0;   # upped when operation is in progress
+
 
 pqlqw_start_ql();
 
