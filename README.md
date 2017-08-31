@@ -1,7 +1,9 @@
-qlqw is the poor man's kludge for making sure the Quod Libet queue is safe
+# qlqw
+
+... is the poor man's kludge for making sure the Quod Libet queue is safe
 without quitting Quod Libet (forcing it to write said queue) and restart it.
 
-# 4 December 2014: All new qlqw, now with infinitely more Perl!
+# Archive: 4 December 2014: All new qlqw, now with infinitely more Perl!
 
 pqlqw is qlqw recast as a Perl script. I spent less than two hours Googling
 around for the requisite Perl to hack it together. It has the same
