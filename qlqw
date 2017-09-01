@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+"""
+qlqw is the third iteration of the concept of the same name. This qlqw
+is written in Python and uses pyinotify to drive its actions.
+"""
+
+import sys
+import argparse
+import os
+import pyinotify
+import pathlib
+
+DOT_QUODLIBET = ".quodlibet"
+CURRENT_FNAME = "current"
+
+
+class ProcessQlCurrent(pyinotify.ProcessEvent):
+
+    def process_IN_MODIFY(self, event):
+        if event.name == CURRENT_FNAME:
+            print("``{}'' modified!".format(CURRENT_FNAME))
+
+
+def ql_get_current_fname():
+    """Gets the path to ~/.quodlibet/."""
+    home_dir = str(pathlib.Path.home())
+    return os.path.join(home_dir, DOT_QUODLIBET)
+
+
+def main():
+    """The main entry point of this qlqw."""
+    watch_path = ql_get_current_fname()
+
+    wama = pyinotify.WatchManager()
+    mask = pyinotify.IN_MODIFY
+    notifier = pyinotify.Notifier(wama, ProcessQlCurrent())
+
+    wama.add_watch(watch_path, mask)
+    notifier.loop()
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
