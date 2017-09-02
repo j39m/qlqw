@@ -10,16 +10,57 @@ import argparse
 import os
 import pyinotify
 import pathlib
+import subprocess
+import urllib.parse
 
 DOT_QUODLIBET = ".quodlibet"
 CURRENT_FNAME = "current"
+
+DEBUG = True
+
+
+def system(cmd, timeout=13):
+    """Run an external command."""
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    (out_, err_) = proc.communicate(timeout=timeout)
+    out = out_.decode(encoding="UTF-8")
+    err = err_.decode(encoding="UTF-8")
+
+    sts = proc.wait(timeout=timeout)
+    return (sts, out, err)
 
 
 class ProcessQlCurrent(pyinotify.ProcessEvent):
 
     def process_IN_MODIFY(self, event):
+        """Check if the ``current'' file was modified."""
         if event.name == CURRENT_FNAME:
             print("``{}'' modified!".format(CURRENT_FNAME))
+
+
+class QlQueue(object):
+
+    PRINT = "quodlibet --print-queue"
+    FPFX = "file://"
+
+    def fetch_queue(self):
+        """Ask Quod Libet for the latest queue."""
+        def post_process(stdout):
+            unurl = urllib.parse.unquote(stdout)
+            unpfx = [line[len(self.FPFX):] for line in unurl.splitlines()]
+            if DEBUG:
+                for path in unpfx:
+                    assert os.path.exists(path),\
+                        "``{}'' not found!".format(path)
+            return "\n".join(unpfx)
+
+        (_, out, _) = system(self.PRINT.split())
+        return post_process(out)
 
 
 def ql_get_current_fname():
@@ -30,6 +71,9 @@ def ql_get_current_fname():
 
 def main():
     """The main entry point of this qlqw."""
+    klaus = QlQueue()
+    print(klaus.fetch_queue())
+    return 0
     watch_path = ql_get_current_fname()
 
     wama = pyinotify.WatchManager()
