@@ -23,6 +23,8 @@ $main::cp       = join("/", $userhome, ".quodlibet", "config");
 $main::semaphore = 0;   # upped when operation is in progress
 
 
+# BEGIN MAIN DAEMONIZED FLOW
+
 pqlqw_start_ql();
 
 while (1) { # daemonize
@@ -49,7 +51,7 @@ while (1) { # daemonize
         exit 0;
     }
 
-sleep(260);  # median song length in my library is ~459s; be paranoid
+    sleep(260);  # median length is ~459s; be paranoid
 
 } # end infinite loop. Script's main scope ends here.
 
