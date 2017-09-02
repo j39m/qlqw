@@ -37,6 +37,9 @@ def system(cmd, timeout=13):
 
 class ProcessQlCurrent(pyinotify.ProcessEvent):
 
+    def my_init(self):
+        self.ql_queue = QlQueue()
+
     def process_IN_MODIFY(self, event):
         """Check if the ``current'' file was modified."""
         if event.name == CURRENT_FNAME:
@@ -49,7 +52,7 @@ class QlQueue(object):
     FPFX = "file://"
 
     def fetch_queue(self):
-        """Ask Quod Libet for the latest queue."""
+        """Ask Quod Libet for the latest queue; return a list of files."""
         def post_process(stdout):
             unurl = urllib.parse.unquote(stdout)
             unpfx = [line[len(self.FPFX):] for line in unurl.splitlines()]
@@ -57,7 +60,7 @@ class QlQueue(object):
                 for path in unpfx:
                     assert os.path.exists(path),\
                         "``{}'' not found!".format(path)
-            return "\n".join(unpfx)
+            return unpfx
 
         (_, out, _) = system(self.PRINT.split())
         return post_process(out)
@@ -71,9 +74,6 @@ def ql_get_current_fname():
 
 def main():
     """The main entry point of this qlqw."""
-    klaus = QlQueue()
-    print(klaus.fetch_queue())
-    return 0
     watch_path = ql_get_current_fname()
 
     wama = pyinotify.WatchManager()
