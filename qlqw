@@ -8,10 +8,10 @@ is written in Python and uses pyinotify to drive its actions.
 import sys
 import argparse
 import os
-import pyinotify
 import pathlib
 import subprocess
 import urllib.parse
+import pyinotify
 
 DOT_QUODLIBET = ".quodlibet"
 CURRENT_FNAME = "current"
@@ -36,8 +36,8 @@ def system(cmd, timeout=13):
 
 
 class ProcessQlCurrent(pyinotify.ProcessEvent):
-
-    def my_init(self):
+    """Basic class to field inotify events on QL."""
+    def my_init(self, **kwargs):
         self.ql_queue = QlQueue()
 
     def process_IN_MODIFY(self, event):
@@ -51,19 +51,19 @@ class QlQueue(object):
     PRINT = "quodlibet --print-queue"
     FPFX = "file://"
 
+    def __post_process(self, stdout):
+        unurl = urllib.parse.unquote(stdout)
+        unpfx = [line[len(self.FPFX):] for line in unurl.splitlines()]
+        if DEBUG:
+            unfound = [p for p in unpfx if not os.path.exists(p)]
+            assert not unfound,\
+                "Paths not found:\n\t{}".format("\n\t".join(unfound))
+        return unpfx
+
     def fetch_queue(self):
         """Ask Quod Libet for the latest queue; return a list of files."""
-        def post_process(stdout):
-            unurl = urllib.parse.unquote(stdout)
-            unpfx = [line[len(self.FPFX):] for line in unurl.splitlines()]
-            if DEBUG:
-                for path in unpfx:
-                    assert os.path.exists(path),\
-                        "``{}'' not found!".format(path)
-            return unpfx
-
         (_, out, _) = system(self.PRINT.split())
-        return post_process(out)
+        return self.__post_process(out)
 
 
 def ql_get_current_fname():
