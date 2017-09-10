@@ -67,8 +67,12 @@ class QlQueue(object):
 
 class ProcessQlCurrent(pyinotify.ProcessEvent):
     """Basic class to field inotify events on QL."""
-    def my_init(self, **kwargs):
-        self.ql_queue = QlQueue()
+    def my_init(self, ql_queue=None):
+        """Takes an instance of QlQueue for itself."""
+        if ql_queue is None:
+            self.ql_queue = QlQueue()
+        else:
+            self.ql_queue = ql_queue
 
     def process_IN_MODIFY(self, event):
         """Check if the ``current'' file was modified."""
@@ -85,10 +89,12 @@ def ql_get_current_fname():
 def main():
     """The main entry point of this qlqw."""
     watch_path = ql_get_current_fname()
+    mask = pyinotify.IN_MODIFY
+    ql_queue = QlQueue()
+    processor = ProcessQlCurrent(ql_queue=ql_queue)
 
     wama = pyinotify.WatchManager()
-    mask = pyinotify.IN_MODIFY
-    notifier = pyinotify.Notifier(wama, ProcessQlCurrent())
+    notifier = pyinotify.Notifier(wama, processor)
 
     wama.add_watch(watch_path, mask)
     notifier.loop()
