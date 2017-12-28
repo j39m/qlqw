@@ -80,15 +80,14 @@ class ProcessQlCurrent(pyinotify.ProcessEvent):
             print("``{}'' modified!".format(CURRENT_FNAME))
 
 
-def ql_get_current_fname():
+def ql_get_qld():
     """Gets the path to ~/.quodlibet/."""
     home_dir = str(pathlib.Path.home())
     return os.path.join(home_dir, DOT_QUODLIBET)
 
 
 def main():
-    """The main entry point of this qlqw."""
-    watch_path = ql_get_current_fname()
+    """Initialize inotify and enter the main loop."""
     mask = pyinotify.IN_MODIFY
     ql_queue = QlQueue()
     processor = ProcessQlCurrent(ql_queue=ql_queue)
@@ -96,6 +95,7 @@ def main():
     wama = pyinotify.WatchManager()
     notifier = pyinotify.Notifier(wama, processor)
 
+    watch_path = ql_get_qld()
     wama.add_watch(watch_path, mask)
     notifier.loop()
 
