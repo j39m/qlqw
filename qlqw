@@ -10,11 +10,15 @@ import argparse
 import os
 import pathlib
 import subprocess
+import signal
 import urllib.parse
 import pyinotify
 
 DOT_QUODLIBET = ".quodlibet"
 CURRENT_FNAME = "current"
+QUEUE_FNAME = "queue"
+QUEUE_TMPNAME = QUEUE_FNAME + ".tmp"
+QUEUE_OLDNAME = QUEUE_FNAME + ".old"
 
 DEBUG = True
 
@@ -34,6 +38,29 @@ def system(cmd, timeout=13):
     sts = proc.wait(timeout=timeout)
     return (sts, out, err)
 
+def ql_get_qld(fname=None):
+    """
+    Returns the path to ``~/.quodlibet;'' accepts an additional argument
+    to join with the return value.
+    """
+    home_dir = str(pathlib.Path.home())
+    if fname:
+        return os.path.join(home_dir, DOT_QUODLIBET, fname)
+    return os.path.join(home_dir, DOT_QUODLIBET)
+
+def ql_clear_old_queue():
+    try:
+        os.unlink(ql_get_qld(QUEUE_OLDNAME))
+    except FileNotFoundError:
+        pass
+
+def signal_handler(signum, stfr):
+    raise QlStatusError("received signal {}.".format(signum))
+
+def init_signals():
+    for sig in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, signal_handler)
+
 
 class QlStatusError(OSError):
     pass
@@ -43,6 +70,11 @@ class QlQueue(object):
 
     PRINT = "quodlibet --print-queue"
     FPFX = "file://"
+
+    def __init__(self):
+        self.nofinal = False
+        self.tmpq = ql_get_qld(QUEUE_TMPNAME)
+        ql_clear_old_queue()
 
     def __post_process(self, stdout):
         unurl = urllib.parse.unquote(stdout)
@@ -64,6 +96,27 @@ class QlQueue(object):
             raise QlStatusError(errfmt.format(sts))
         return self.__post_process(out)
 
+    def commit_queue(self, arr):
+        """
+        Given a list of files to write to the queue,
+        write all these files to a tmpfile.
+        """
+        with open(self.tmpq, "w") as fpt:
+            for ent in arr:
+                fpt.write(ent)
+                fpt.write("\n")
+
+    def finalize_queue(self):
+        ql_clear_old_queue()
+        curr_queue = ql_get_qld(QUEUE_FNAME)
+        old_queue = ql_get_qld(QUEUE_OLDNAME)
+
+        os.link(curr_queue, old_queue)
+        try:
+            os.rename(self.tmpq, curr_queue)
+        except FileNotFoundError:
+            pass
+
 
 class ProcessQlCurrent(pyinotify.ProcessEvent):
     """Basic class to field inotify events on QL."""
@@ -75,19 +128,20 @@ class ProcessQlCurrent(pyinotify.ProcessEvent):
             self.ql_queue = ql_queue
 
     def process_IN_MODIFY(self, event):
-        """Check if the ``current'' file was modified."""
-        if event.name == CURRENT_FNAME:
-            print("``{}'' modified!".format(CURRENT_FNAME))
-
-
-def ql_get_qld():
-    """Gets the path to ~/.quodlibet/."""
-    home_dir = str(pathlib.Path.home())
-    return os.path.join(home_dir, DOT_QUODLIBET)
+        """Act if the ``current'' file was modified."""
+        if event.name != CURRENT_FNAME:
+            return
+        queue_state = self.ql_queue.fetch_queue()
+        try:
+            self.ql_queue.commit_queue(queue_state)
+        except QlStatusError as e:
+            self.ql_queue.nofinal = True
+            raise
 
 
 def main():
     """Initialize inotify and enter the main loop."""
+    watch_path = ql_get_qld()
     mask = pyinotify.IN_MODIFY
     ql_queue = QlQueue()
     processor = ProcessQlCurrent(ql_queue=ql_queue)
@@ -95,9 +149,14 @@ def main():
     wama = pyinotify.WatchManager()
     notifier = pyinotify.Notifier(wama, processor)
 
-    watch_path = ql_get_qld()
     wama.add_watch(watch_path, mask)
-    notifier.loop()
+    init_signals()
+    try:
+        notifier.loop()
+    except QlStatusError as e:
+        print(e)
+        if not ql_queue.nofinal:
+            ql_queue.finalize_queue()
 
     return 0
 
