@@ -155,9 +155,9 @@ def main():
         notifier.loop()
     except QlStatusError as e:
         print(e)
-        if not ql_queue.nofinal:
-            ql_queue.finalize_queue()
 
+    if not ql_queue.nofinal:
+        ql_queue.finalize_queue()
     return 0
 
 if __name__ == "__main__":
