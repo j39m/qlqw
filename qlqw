@@ -72,7 +72,7 @@ class QlQueue(object):
     FPFX = "file://"
 
     def __init__(self):
-        self.nofinal = False
+        self.nofinal = True
         self.tmpq = ql_get_qld(QUEUE_TMPNAME)
         ql_clear_old_queue()
 
@@ -105,6 +105,7 @@ class QlQueue(object):
             for ent in arr:
                 fpt.write(ent)
                 fpt.write("\n")
+        self.nofinal = False
 
     def finalize_queue(self):
         ql_clear_old_queue()
