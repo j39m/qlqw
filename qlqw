@@ -13,6 +13,7 @@ import subprocess
 import signal
 import urllib.parse
 import pyinotify
+import time
 
 DOT_QUODLIBET = ".quodlibet"
 CURRENT_FNAME = "current"
@@ -75,6 +76,7 @@ class QlQueue(object):
         self.nofinal = True
         self.tmpq = ql_get_qld(QUEUE_TMPNAME)
         ql_clear_old_queue()
+        self.last_commit = -1
 
     def __post_process(self, stdout):
         unurl = urllib.parse.unquote(stdout)
@@ -96,11 +98,25 @@ class QlQueue(object):
             raise QlStatusError(errfmt.format(sts))
         return self.__post_process(out)
 
+    def precommit(self):
+        """Perform needed actions prior to queue commit."""
+        now = time.time()
+
+        # Disregard negative time jumps (should be rare / impossible).
+        if (now - self.last_commit) < 0:
+            return
+        # But protect ourselves if Quod Libet is glitching out.
+        if (now - self.last_commit) < 2:
+            self.nofinal = True
+            raise QlStatusError("Commits firing too quickly. Abort...")
+
     def commit_queue(self, arr):
         """
         Given a list of files to write to the queue,
         write all these files to a tmpfile.
         """
+        self.precommit()
+
         with open(self.tmpq, "w") as fpt:
             for ent in arr:
                 fpt.write(ent)
