@@ -104,11 +104,13 @@ class QlQueue(object):
 
         # Disregard negative time jumps (should be rare / impossible).
         if (now - self.last_commit) < 0:
-            return
+            pass
         # But protect ourselves if Quod Libet is glitching out.
-        if (now - self.last_commit) < 2:
+        elif (now - self.last_commit) < 2:
             self.nofinal = True
             raise QlStatusError("Commits firing too quickly. Abort...")
+
+        self.last_commit = now
 
     def commit_queue(self, arr):
         """
