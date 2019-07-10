@@ -15,7 +15,7 @@ import urllib.parse
 import pyinotify
 import time
 
-DOT_QUODLIBET = ".quodlibet"
+QL_CONFIG_DIR = os.path.join(".config", "quodlibet")
 CURRENT_FNAME = "current"
 QUEUE_FNAME = "queue"
 QUEUE_TMPNAME = QUEUE_FNAME + ".tmp"
@@ -41,13 +41,13 @@ def system(cmd, timeout=13):
 
 def ql_get_qld(fname=None):
     """
-    Returns the path to ``~/.quodlibet;'' accepts an additional argument
+    Returns the path to QL's config dir; accepts an additional argument
     to join with the return value.
     """
     home_dir = str(pathlib.Path.home())
     if fname:
-        return os.path.join(home_dir, DOT_QUODLIBET, fname)
-    return os.path.join(home_dir, DOT_QUODLIBET)
+        return os.path.join(home_dir, QL_CONFIG_DIR, fname)
+    return os.path.join(home_dir, QL_CONFIG_DIR)
 
 def ql_clear_old_queue():
     try:
