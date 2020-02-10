@@ -19,6 +19,8 @@ from quodlibet.util.dprint import print_d
 from quodlibet.errorreport import errorhook
 from quodlibet import commands
 
+LOGGING_IS_ENABLED = False
+
 class QlqwError(RuntimeError):
     pass
 
@@ -26,62 +28,58 @@ class QlqwBackend:
     """Provides threaded I/O for queue writing."""
 
     FILE_PREFIX = "file://"
+    TARGET_PATH = os.path.join(quodlibet.get_user_dir(), "qlqw.txt")
 
     def __init__(self):
         self.called_event = threading.Event()
-        self.last_error = None
-        self.target_path = os.path.join(quodlibet.get_user_dir(), "qlqw.txt")
+        self.last_queue_hash = None
 
-        # Protects self.last_error.
-        self.lock = threading.Lock()
+    def parse_queue(self, dumped_queue_string):
+        parsed = list()
 
-    def set_last_error(self, error):
-        with self.lock:
-            self.last_error = error
-
-    def clear_last_error(self):
-        with self.lock:
-            last_error = self.last_error
-            self.last_error = None
-            return last_error
-
-    def get_queue(self):
-        dumped_string = commands.registry.run(app, "dump-queue")
-
-        result = list()
-        for line in urllib.parse.unquote(dumped_string).splitlines():
+        for line in urllib.parse.unquote(dumped_queue_string).splitlines():
             if not line.startswith(self.FILE_PREFIX):
                 raise QlqwError("unexpected queue entry: ``{}''".format(line))
+
             path = line[len(self.FILE_PREFIX):]
             if not os.path.exists(path):
                 raise QlqwError("nonexistent queue entry: ``{}''".format(path))
-            result.append(path);
 
-        return result
+            parsed.append(path);
+
+        return parsed
+
+    def get_queue(self):
+        dumped_string = commands.registry.run(app, "dump-queue")
+        queue_hash = hash(dumped_string)
+        if queue_hash == self.last_queue_hash:
+            return None
+
+        self.last_queue_hash = queue_hash
+        return self.parse_queue(dumped_string)
 
     def commit_queue(self, queue_list):
-        with open(self.target_path, "w") as qfp:
+        with open(self.TARGET_PATH, "w") as qfp:
             for line in queue_list:
                 qfp.write(line)
                 qfp.write("\n")
 
     def get_and_commit_queue(self):
         queue_list = self.get_queue()
-        self.commit_queue(queue_list)
+        if queue_list is not None:
+            self.commit_queue(queue_list)
 
     def fire(self):
         """
         Arms this backend to write the queue. Called from the main
         plugin context.
         """
-        # We should signal the caller (main plugin context) that
-        # an error previously occurred. They can react appropriately
-        # and possibly call us anew if the error is recoverable.
-        # This isn't actually thread-safe.
-        last_error = self.clear_last_error()
-        if last_error is not None:
-            raise last_error
         self.called_event.set()
+
+    def _run_loop(self):
+        self.called_event.wait()
+        self.called_event.clear()
+        self.get_and_commit_queue()
 
     def run_loop(self):
         """
@@ -89,15 +87,18 @@ class QlqwBackend:
         context to request a queue write. Operates from the I/O context.
         """
         while True:
-            self.called_event.wait()
-            self.called_event.clear()
             try:
-                self.get_and_commit_queue()
-            except Exception as e:
-                self.set_last_error(e)
-                raise e
+                self._run_loop()
+            except Exception:
+                errorhook()
 
 class Qlqw(EventPlugin):
+    """
+    This class does nothing but deliver queue write requests to the
+    backend (residing in a separate I/O thread). It does not fail
+    meaningfully, deferring error handling to said backend.
+    """
+
     PLUGIN_ID = "qlqw_ng"
     PLUGIN_NAME = _("Write Queue Aggressively")
     PLUGIN_DESC = _("Commits queue contents to disk on every song "
@@ -107,56 +108,25 @@ class Qlqw(EventPlugin):
     def __init__(self):
         self.__enabled = False
         self.backend = QlqwBackend()
-        self.times_nagged = 0
 
-        def backend_run():
-            try:
-                self.backend.run_loop()
-            except Exception:
-                errorhook()
-
-        backend_thread = threading.Thread(None, backend_run)
+        backend_thread = threading.Thread(None, self.backend.run_loop)
         backend_thread.setDaemon(True)
         backend_thread.start()
 
     def log(self, message):
-        print_d("{}: {}".format(self.PLUGIN_ID, message))
+        if LOGGING_IS_ENABLED:
+            print_d("{}: {}".format(self.PLUGIN_ID, message))
 
-    def emergency_stop_nag_dialog(self, msg, dialog_type):
-        dialog = Message(dialog_type, app.window, self.PLUGIN_NAME, msg)
-        dialog.connect("response", lambda dia, resp: dia.destroy())
-        dialog.show()
-
-    def emergency_stop(self, triggering_exception):
-        self.log("emergency stop: {}".format(triggering_exception))
-        self.disabled()
-        message = str(triggering_exception)
-        if self.times_nagged:
-            message = (
-                    "{}\n\nHint: disable this plugin, fix your prior "
-                    "problem, and re-enable."
-            ).format(str(triggering_exception))
-        GLib.idle_add(self.emergency_stop_nag_dialog,
-                _(message),
-                Gtk.MessageType.ERROR)
-        self.times_nagged += 1
-
-    def write_queue(self):
+    def plugin_on_song_started(self, song):
         if not self.__enabled:
-            raise QlqwError("qlqw_ng is disabled")
+            return
+
+        self.log("song changed - writing queue.")
         # TODO(j39m): rate-limit the present method.
         self.backend.fire()
 
-    def plugin_on_song_started(self, song):
-        self.log("song changed - writing queue.")
-        try:
-            self.write_queue()
-        except Exception as e:
-            self.emergency_stop(e)
-
     def enabled(self):
         self.__enabled = True
-        self.times_nagged = 0
         self.log("enabled.")
 
     def disabled(self):
