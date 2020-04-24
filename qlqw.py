@@ -42,7 +42,7 @@ class QlqwBackend(IoOnSongChangePluginBackend):
     def get_queue(self):
         dumped_string = commands.registry.run(app, "dump-queue")
         queue_hash = hash(dumped_string)
-        if queue_hash == self.last_queue_hash:
+        if not dumped_string or queue_hash == self.last_queue_hash:
             return None
 
         self.last_queue_hash = queue_hash
