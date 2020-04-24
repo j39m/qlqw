@@ -14,7 +14,6 @@ from quodlibet import _
 from quodlibet import qltk
 from quodlibet.plugins.events import EventPlugin
 from quodlibet.plugins import PluginConfig
-from quodlibet.qltk import Icons
 from quodlibet.qltk.msg import Message
 from quodlibet.util.dprint import print_d
 from quodlibet.errorreport import errorhook
@@ -56,11 +55,6 @@ class IoOnSongChangePlugin(EventPlugin):
     backend (residing in a separate I/O thread). It does not fail
     meaningfully, deferring error handling to said backend.
     """
-
-    PLUGIN_ID = "XXX PLUGIN_ID NOT SET"
-    PLUGIN_NAME = _("XXX PLUGIN_NAME NOT SET")
-    PLUGIN_DESC = _("XXX PLUGIN_DESC NOT SET")
-    PLUGIN_ICON = Icons.DIALOG_ERROR
 
     QLQW_BACKEND_TYPE = IoOnSongChangePluginBackend
 

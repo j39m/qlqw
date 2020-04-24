@@ -9,6 +9,7 @@ import quodlibet
 from quodlibet import _
 from quodlibet import app, qltk
 from quodlibet import commands
+from quodlibet.qltk import Icons
 
 from quodlibet.plugins.qlqw_common import IoOnSongChangePlugin
 from quodlibet.plugins.qlqw_common import IoOnSongChangePluginBackend
@@ -69,5 +70,6 @@ class Qlqw(IoOnSongChangePlugin):
     PLUGIN_ID = "qlqw"
     PLUGIN_NAME = _("Quod Libet Queue Writer")
     PLUGIN_DESC = _("Writes queue on every song change")
+    PLUGIN_ICON = Icons.DIALOG_ERROR
 
     QLQW_BACKEND_TYPE = QlqwBackend
