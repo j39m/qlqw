@@ -1,27 +1,35 @@
-# qlqw writes your queue on every song change.
-#
 # This code is licensed under the 3-Clause BSD License.
 
 import os
+import threading
 import urllib.parse
+
+from gi.repository import Gtk, GLib
 
 import quodlibet
 from quodlibet import _
 from quodlibet import app, qltk
-from quodlibet import commands
+from quodlibet.plugins.events import EventPlugin
+from quodlibet.plugins import PluginConfig
 from quodlibet.qltk import Icons
+from quodlibet.qltk.msg import Message
+from quodlibet.util.dprint import print_d
+from quodlibet.errorreport import errorhook
+from quodlibet import commands
 
-from quodlibet.plugins.qlqw_common import IoOnSongChangePlugin
-from quodlibet.plugins.qlqw_common import IoOnSongChangePluginBackend
-from quodlibet.plugins.qlqw_common import QlqwError
+LOGGING_IS_ENABLED = False
 
-class QlqwBackend(IoOnSongChangePluginBackend):
+class QlqwError(RuntimeError):
+    pass
+
+class QlqwBackend:
+    """Provides threaded I/O for queue writing."""
 
     FILE_PREFIX = "file://"
     TARGET_PATH = os.path.join(quodlibet.get_user_dir(), "qlqw.txt")
 
     def __init__(self):
-        super().__init__()
+        self.called_event = threading.Event()
         self.last_queue_hash = None
 
     def parse_queue(self, dumped_queue_string):
@@ -42,7 +50,7 @@ class QlqwBackend(IoOnSongChangePluginBackend):
     def get_queue(self):
         dumped_string = commands.registry.run(app, "dump-queue")
         queue_hash = hash(dumped_string)
-        if not dumped_string or queue_hash == self.last_queue_hash:
+        if queue_hash == self.last_queue_hash:
             return None
 
         self.last_queue_hash = queue_hash
@@ -59,17 +67,66 @@ class QlqwBackend(IoOnSongChangePluginBackend):
         if queue_list is not None:
             self.commit_queue(queue_list)
 
+    def fire(self):
+        """
+        Arms this backend to write the queue. Called from the main
+        plugin context.
+        """
+        self.called_event.set()
+
     def _run_loop(self):
-        # Block until there's work to do.
-        super()._run_loop()
+        self.called_event.wait()
+        self.called_event.clear()
         self.get_and_commit_queue()
 
+    def run_loop(self):
+        """
+        Main entry point of this class. Waits for the main plugin
+        context to request a queue write. Operates from the I/O context.
+        """
+        while True:
+            try:
+                self._run_loop()
+            except Exception:
+                errorhook()
 
-class Qlqw(IoOnSongChangePlugin):
+class Qlqw(EventPlugin):
+    """
+    This class does nothing but deliver queue write requests to the
+    backend (residing in a separate I/O thread). It does not fail
+    meaningfully, deferring error handling to said backend.
+    """
 
     PLUGIN_ID = "qlqw"
-    PLUGIN_NAME = _("Quod Libet Queue Writer")
-    PLUGIN_DESC = _("Writes queue on every song change")
+    PLUGIN_NAME = _("Write Queue Aggressively")
+    PLUGIN_DESC = _("Commits queue contents to disk on every song "
+                    "change.")
     PLUGIN_ICON = Icons.DIALOG_ERROR
 
-    QLQW_BACKEND_TYPE = QlqwBackend
+    def __init__(self):
+        self.__enabled = False
+        self.backend = QlqwBackend()
+
+        backend_thread = threading.Thread(None, self.backend.run_loop)
+        backend_thread.setDaemon(True)
+        backend_thread.start()
+
+    def log(self, message):
+        if LOGGING_IS_ENABLED:
+            print_d("{}: {}".format(self.PLUGIN_ID, message))
+
+    def plugin_on_song_started(self, song):
+        if not self.__enabled:
+            return
+
+        self.log("song changed - writing queue.")
+        # TODO(j39m): rate-limit the present method.
+        self.backend.fire()
+
+    def enabled(self):
+        self.__enabled = True
+        self.log("enabled.")
+
+    def disabled(self):
+        self.__enabled = False
+        self.log("disabled.")
