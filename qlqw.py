@@ -26,7 +26,10 @@ class QlqwBackend:
     """Provides threaded I/O for queue writing."""
 
     FILE_PREFIX = "file://"
-    TARGET_PATH = os.path.join(quodlibet.get_user_dir(), "qlqw.txt")
+    TARGET_PATH = os.path.join(
+            os.getenv("XDG_RUNTIME_DIR", default=quodlibet.get_user_dir()),
+            "qlqw.txt"
+    )
 
     def __init__(self):
         self.called_event = threading.Event()
@@ -50,7 +53,7 @@ class QlqwBackend:
     def get_queue(self):
         dumped_string = commands.registry.run(app, "dump-queue")
         queue_hash = hash(dumped_string)
-        if queue_hash == self.last_queue_hash:
+        if not dumped_string or queue_hash == self.last_queue_hash:
             return None
 
         self.last_queue_hash = queue_hash
