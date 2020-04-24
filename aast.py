@@ -31,17 +31,28 @@ class AlwaysAvailSongTitle(EventPlugin):
     def __init__(self):
         self.__enabled = False
 
+    def ellipsise(self, title):
+        title_bytes = bytes(title, "utf-8")
+        title_byte_length = len(title_bytes)
+        if title_byte_length <= self.I3STATUS_BLOCK_MAX_CHAR_WIDTH:
+            return title
+
+        truncated_title_length = self.MAX_TITLE_WIDTH
+        while truncated_title_length:
+            try:
+                truncated_title = \
+                    title_bytes[:truncated_title_length].decode("utf-8")
+                break
+            except UnicodeDecodeError:
+                truncated_title_length -= 1
+        return "{} ...".format(truncated_title)
+
     def write_title(self, song):
         title = _print_playing(app, fstring=u"<title>")
+        ellipsised_title = self.ellipsise(title)
 
         with open(self.TARGET_FILE, "w") as tfp:
-
-            if len(title) > self.I3STATUS_BLOCK_MAX_CHAR_WIDTH:
-                tfp.write(title[:self.MAX_TITLE_WIDTH])
-                tfp.write(" ...")
-                return
-
-            tfp.write(title)
+            tfp.write(ellipsised_title)
 
     def notify_i3status(self):
         pgrep_output = subprocess.check_output((
