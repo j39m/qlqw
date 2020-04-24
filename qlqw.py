@@ -2,6 +2,7 @@
 #
 # This code is licensed under the 3-Clause BSD License.
 
+import os
 import urllib.parse
 
 import quodlibet
@@ -9,9 +10,9 @@ from quodlibet import _
 from quodlibet import app, qltk
 from quodlibet import commands
 
-from qlqw_common import IoOnSongChangePlugin
-from qlqw_common import IoOnSongChangePluginBackend
-from qlqw_common import QlqwError
+from quodlibet.plugins.qlqw_common import IoOnSongChangePlugin
+from quodlibet.plugins.qlqw_common import IoOnSongChangePluginBackend
+from quodlibet.plugins.qlqw_common import QlqwError
 
 class QlqwBackend(IoOnSongChangePluginBackend):
 

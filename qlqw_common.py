@@ -1,4 +1,6 @@
 # This module contains common boilerplate for the qlqw family.
+# It should be installed alongside other plugin templates packaged
+# with Quod Libet.
 #
 # This code is licensed under the 3-Clause BSD License.
 
