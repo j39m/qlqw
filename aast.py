@@ -13,11 +13,35 @@ from quodlibet.plugins.events import EventPlugin
 from quodlibet.qltk import Icons
 from quodlibet.commands import _print_playing
 
+class EllipsisNeededError(RuntimeError):
+    pass
+
+def write_bytes(characters, allowed_bytes, tfp, allow_partial=True):
+    """Returns number of bytes written to |tfp|."""
+    as_bytes = bytes(characters, "utf-8")
+
+    if len(as_bytes) <= allowed_bytes:
+        tfp.write(characters)
+        return len(as_bytes)
+
+    if not allow_partial:
+        raise EllipsisNeededError()
+
+    writable_length = allowed_bytes
+    while writable_length:
+        try:
+            characters_to_write = as_bytes[:writable_length].decode("utf-8")
+            break
+        except UnicodeDecodeError:
+            writable_length -= 1
+    tfp.write(characters_to_write)
+    raise EllipsisNeededError()
+
 class AlwaysAvailSongTitle(EventPlugin):
 
     PLUGIN_ID = "always-avail-song-title"
-    PLUGIN_NAME = _("Always Avail Song Title")
-    PLUGIN_DESC = _("Avails song title to i3status on song change.")
+    PLUGIN_NAME = "Always Avail Song Title"
+    PLUGIN_DESC = "Avails song title to i3status on song change."
     PLUGIN_ICON = Icons.DIALOG_ERROR
 
     TARGET_FILE = os.path.join(
@@ -25,34 +49,57 @@ class AlwaysAvailSongTitle(EventPlugin):
         "quodlibet-current-title.txt"
     )
     USERNAME = os.getenv("USERNAME")
-    I3STATUS_BLOCK_MAX_CHAR_WIDTH = 120
-    MAX_TITLE_WIDTH = I3STATUS_BLOCK_MAX_CHAR_WIDTH - 4
+    ELLIPSIS = " ..."
+    ABSOLUTE_MAX_TITLE_WIDTH = 120
+    ELLIPSISED_MAX_TITLE_WIDTH = ABSOLUTE_MAX_TITLE_WIDTH - len(ELLIPSIS)
 
     def __init__(self):
         self.__enabled = False
 
-    def ellipsise(self, title):
-        title_bytes = bytes(title, "utf-8")
-        title_byte_length = len(title_bytes)
-        if title_byte_length <= self.I3STATUS_BLOCK_MAX_CHAR_WIDTH:
-            return title
+    def greedily_write_bytes(self, split_title, tfp):
+        """
+        Greedily writes as many bytes and escaped ampersands ("&amp;")
+        as possible. Never leaves |tfp| s.t. it ends in a partial
+        ampersand or in invalid UTF-8.
 
-        truncated_title_length = self.MAX_TITLE_WIDTH
-        while truncated_title_length:
-            try:
-                truncated_title = \
-                    title_bytes[:truncated_title_length].decode("utf-8")
-                break
-            except UnicodeDecodeError:
-                truncated_title_length -= 1
-        return "{} ...".format(truncated_title)
+        |split_title| is a list of title fragments, having been split
+        on ampersand characters.
+        """
+        bytes_until_ellipsis = self.ELLIPSISED_MAX_TITLE_WIDTH
+        bytes_until_maximum = self.ABSOLUTE_MAX_TITLE_WIDTH
 
-    def write_title(self, song):
-        title = _print_playing(app, fstring=u"<title>")
-        ellipsised_title = self.ellipsise(title)
+        for (index, char_sequence) in enumerate(split_title):
+            is_last_loop = index == len(split_title) - 1
+            if is_last_loop:
+                # Here's a real mess: if we can fit the last run
+                # squarely into the _total_ allowed characters, there's
+                # no need for ellipsis.
+                if (len(bytes(char_sequence, "utf-8"))
+                        <= bytes_until_maximum):
+                    write_bytes(char_sequence, bytes_until_maximum, tfp)
+                    return
+                write_bytes(char_sequence, bytes_until_ellipsis, tfp)
+                assert False, "BUG: expected write_bytes() to raise \
+                        EllipsisNeededError()"
+
+            bytes_written = write_bytes(char_sequence, bytes_until_ellipsis,
+                                        tfp)
+            bytes_until_ellipsis -= bytes_written
+            bytes_until_maximum -= bytes_written
+
+            bytes_written = write_bytes("&amp;", bytes_until_ellipsis,
+                                        tfp, allow_partial=False)
+            bytes_until_ellipsis -= bytes_written
+            bytes_until_maximum -= bytes_written
+
+    def write_title(self):
+        raw_title = _print_playing(app, fstring=u"<title>")
 
         with open(self.TARGET_FILE, "w") as tfp:
-            tfp.write(ellipsised_title)
+            try:
+                self.greedily_write_bytes(raw_title.split("&"), tfp)
+            except EllipsisNeededError:
+                tfp.write(self.ELLIPSIS)
 
     def notify_i3status(self):
         pgrep_output = subprocess.check_output((
@@ -65,11 +112,11 @@ class AlwaysAvailSongTitle(EventPlugin):
         if i3status_pid > 1:
             os.kill(i3status_pid, int(signal.SIGUSR1))
 
-    def plugin_on_song_started(self, song):
+    def plugin_on_song_started(self, _song):
         if not self.__enabled:
             return
 
-        self.write_title(song)
+        self.write_title()
         self.notify_i3status()
 
     def enabled(self):
