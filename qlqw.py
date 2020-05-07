@@ -1,18 +1,19 @@
 # This code is licensed under the 3-Clause BSD License.
 
+"""
+qlqw dumps your queue into ${XDG_RUNTIME_DIR} on every song change.
+"""
+
 import os
 import threading
 import urllib.parse
 
 from gi.repository import Gtk, GLib
 
-import quodlibet
 from quodlibet import _
-from quodlibet import app, qltk
+from quodlibet import app
 from quodlibet.plugins.events import EventPlugin
-from quodlibet.plugins import PluginConfig
 from quodlibet.qltk import Icons
-from quodlibet.qltk.msg import Message
 from quodlibet.util.dprint import print_d
 from quodlibet.errorreport import errorhook
 from quodlibet import commands
@@ -20,15 +21,15 @@ from quodlibet import commands
 LOGGING_IS_ENABLED = False
 
 class QlqwError(RuntimeError):
-    pass
+    """Do-nothing exception specific to qlqw."""
 
 class QlqwBackend:
     """Provides threaded I/O for queue writing."""
 
     FILE_PREFIX = "file://"
     TARGET_PATH = os.path.join(
-            os.getenv("XDG_RUNTIME_DIR", default=quodlibet.get_user_dir()),
-            "qlqw.txt"
+        os.getenv("XDG_RUNTIME_DIR"),
+        "qlqw.txt"
     )
 
     def __init__(self):
@@ -46,7 +47,7 @@ class QlqwBackend:
             if not os.path.exists(path):
                 raise QlqwError("nonexistent queue entry: ``{}''".format(path))
 
-            parsed.append(path);
+            parsed.append(path)
 
         return parsed
 
@@ -114,22 +115,15 @@ class Qlqw(EventPlugin):
         backend_thread.setDaemon(True)
         backend_thread.start()
 
-    def log(self, message):
-        if LOGGING_IS_ENABLED:
-            print_d("{}: {}".format(self.PLUGIN_ID, message))
-
     def plugin_on_song_started(self, song):
         if not self.__enabled:
             return
 
-        self.log("song changed - writing queue.")
         # TODO(j39m): rate-limit the present method.
         self.backend.fire()
 
     def enabled(self):
         self.__enabled = True
-        self.log("enabled.")
 
     def disabled(self):
         self.__enabled = False
-        self.log("disabled.")
