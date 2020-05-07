@@ -6,8 +6,6 @@ import subprocess
 
 from gi.repository import Gtk, GLib
 
-import quodlibet
-from quodlibet import _
 from quodlibet import app
 from quodlibet.plugins.events import EventPlugin
 from quodlibet.qltk import Icons
