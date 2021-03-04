@@ -39,7 +39,7 @@ class AlwaysAvailSongTitle(EventPlugin):
 
     PLUGIN_ID = "always-avail-song-title"
     PLUGIN_NAME = "Always Avail Song Title"
-    PLUGIN_DESC = "Avails song title to i3status on song change."
+    PLUGIN_DESC = "Avails song title to waybar on song change."
     PLUGIN_ICON = Icons.DIALOG_ERROR
 
     TARGET_FILE = os.path.join(
@@ -99,23 +99,23 @@ class AlwaysAvailSongTitle(EventPlugin):
             except EllipsisNeededError:
                 tfp.write(self.ELLIPSIS)
 
-    def notify_i3status(self):
+    def notify_waybar(self):
         pgrep_output = subprocess.check_output((
-            "pgrep", "-u", self.USERNAME, "-x", "i3status")).strip()
+            "pgrep", "-u", self.USERNAME, "-x", "waybar")).strip()
         try:
-            i3status_pid = int(pgrep_output)
+            waybar_pid = int(pgrep_output)
         except ValueError:
             return
 
-        if i3status_pid > 1:
-            os.kill(i3status_pid, int(signal.SIGUSR1))
+        if waybar_pid > 1:
+            os.kill(waybar_pid, int(signal.SIGRTMIN + 1))
 
     def plugin_on_song_started(self, _song):
         if not self.__enabled:
             return
 
         self.write_title()
-        self.notify_i3status()
+        self.notify_waybar()
 
     def enabled(self):
         self.__enabled = True
