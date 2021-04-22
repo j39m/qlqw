@@ -20,8 +20,10 @@ from quodlibet import commands
 
 LOGGING_IS_ENABLED = False
 
+
 class QlqwError(RuntimeError):
     """Do-nothing exception specific to qlqw."""
+
 
 class QlqwBackend:
     """Provides threaded I/O for queue writing."""
@@ -93,6 +95,7 @@ class QlqwBackend:
                 self._run_loop()
             except Exception:
                 errorhook()
+
 
 class Qlqw(EventPlugin):
     """
