@@ -11,8 +11,10 @@ from quodlibet.plugins.events import EventPlugin
 from quodlibet.qltk import Icons
 from quodlibet.commands import _print_playing
 
+
 class EllipsisNeededError(RuntimeError):
     pass
+
 
 def write_bytes(characters, allowed_bytes, tfp, allow_partial=True):
     """Returns number of bytes written to |tfp|."""
@@ -34,6 +36,7 @@ def write_bytes(characters, allowed_bytes, tfp, allow_partial=True):
             writable_length -= 1
     tfp.write(characters_to_write)
     raise EllipsisNeededError()
+
 
 class AlwaysAvailSongTitle(EventPlugin):
 
